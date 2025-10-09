@@ -1,0 +1,70 @@
+{
+	"name": "@ismael1361/router",
+	"version": "1.0.0",
+	"description": "A API of router functions built with TypeScript",
+	"main": "dist/index.js",
+	"module": "dist/index.esm.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"private": false,
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"scripts": {
+		"start": "tsx -r tsconfig-paths/register demo/index.ts",
+		"build": "npm run clean && npm run build:types && npm run build:bundles",
+		"clean": "rimraf dist",
+		"build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types",
+		"build:bundles": "rollup -c --bundleConfigAsCjs",
+		"dev": "rollup -c --bundleConfigAsCjs -w",
+		"test": "jest",
+		"test:watch": "jest --watchAll",
+		"prepublishOnly": "npm run build && npm test",
+		"npm:publish": "npm run build && npm publish --access=public"
+	},
+	"keywords": [
+		"router",
+		"api",
+		"typescript"
+	],
+	"author": "ISMAEL1361",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ismael1361/router.git"
+	},
+	"bugs": {
+		"url": "https://github.com/ismael1361/router/issues"
+	},
+	"homepage": "https://github.com/ismael1361/router#readme",
+	"devDependencies": {
+		"@rollup/plugin-commonjs": "^25.0.0",
+		"@rollup/plugin-json": "^6.1.0",
+		"@rollup/plugin-node-resolve": "^15.0.0",
+		"@rollup/plugin-terser": "^0.4.0",
+		"@rollup/plugin-typescript": "^11.0.0",
+		"@types/express": "^5.0.3",
+		"@types/jest": "^29.0.0",
+		"@types/node": "^24.7.1",
+		"@types/swagger-jsdoc": "^6.0.4",
+		"jest": "^29.0.0",
+		"jest-environment-node": "^30.1.2",
+		"rimraf": "^6.0.1",
+		"rollup": "^3.0.0",
+		"rollup-plugin-dts": "^6.0.0",
+		"ts-jest": "^29.0.0",
+		"ts-node": "^10.9.2",
+		"tsconfig-paths": "^4.2.0",
+		"tslib": "^2.8.1",
+		"tsx": "^4.20.6",
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"@ismael1361/utils": "^1.0.4",
+		"express": "^5.1.0",
+		"swagger-jsdoc": "^6.2.8"
+	}
+}
