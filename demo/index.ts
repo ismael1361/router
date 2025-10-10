@@ -1,10 +1,10 @@
 import { middleware, create, route, Request } from "../src";
 
-interface AuthRequest extends Request<any, { userId: string; user?: Record<string, any> }> {
+interface AuthRequest extends Request<"userId" | "id", { userId: string; user?: Record<string, any> }> {
 	user: { id: string; roles: string[] };
 }
 
-interface FileRequest extends Request<any, { fileName: string }> {
+interface FileRequest extends Request<"key", { fileName: string }> {
 	files: File[];
 }
 

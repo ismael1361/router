@@ -21,16 +21,16 @@ type MergeObjects<A, B> = {
 };
 
 // prefere um lado quando o outro é `any`, caso contrário mescla
-type PreferMerge<A, B> = IsAny<A> extends true ? B : IsAny<B> extends true ? A : MergeObjects<A, B>;
+export type PreferMerge<A, B> = IsAny<A> extends true ? B : IsAny<B> extends true ? A : MergeObjects<A, B>;
 
 // combina chaves tipo string (ReqQuery / ReqParams), preferindo o não-any, senão união
-type CombineKeys<A, B> = IsAny<A> extends true ? B : IsAny<B> extends true ? A : A | B;
+export type CombineKeys<A, B> = IsAny<A> extends true ? B : IsAny<B> extends true ? A : A | B;
 
-type Identity<T> = IsAny<T> extends true ? Record<PropertyKey, any> : T;
+export type Identity<T> = IsAny<T> extends true ? Record<PropertyKey, any> : T;
 
 export type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
-export type RouterMethods = "get" | "post" | "put" | "delete" | "patch" | "options" | "head" | "use";
+export type RouterMethods = "get" | "post" | "put" | "delete" | "patch" | "options" | "head" | "all" | "use";
 
 /**
  * Representa um objeto de requisição (request) estendido do Express, com tipagem aprimorada e propriedades adicionais.
