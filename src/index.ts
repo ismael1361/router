@@ -118,7 +118,7 @@ export function create<Req extends Request = Request, Res extends Response = Res
  * // Ao chamar `userRouter.getSwagger()`, o `securitySchemes` de `authDoc`
  * // será incluído na documentação final.
  */
-export function middleware<Req extends Request = any, Res extends Response = any>(callback: MiddlewareFC<Req, Res>, doc?: MiddlewareFCDoc): MiddlewareFC<Req, Res> {
+export function middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Req, Res>, doc?: MiddlewareFCDoc): MiddlewareFC<Req, Res> {
 	callback.doc = doc;
 	return callback;
 }
@@ -161,6 +161,6 @@ export function middleware<Req extends Request = any, Res extends Response = any
  *
  * app.listen(3000, () => console.log("Servidor rodando."));
  */
-export function route<Req extends Request = any, Res extends Response = any>(path: string): Router<Req, Res> {
+export function route<Req extends Request = Request, Res extends Response = Response>(path: string): Router<Req, Res> {
 	return new Router<Req, Res>().route(path);
 }

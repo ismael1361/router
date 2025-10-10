@@ -1,4 +1,4 @@
-import { middleware, create, Request } from "../src";
+import { middleware, create, route, Request } from "../src";
 
 interface AuthRequest extends Request<any, { userId: string; user?: Record<string, any> }> {
 	user: { id: string; roles: string[] };
@@ -64,6 +64,10 @@ userRouter
 	.doc({
 		summary: "Get router",
 	});
+
+const router = route("/v1");
+
+userRouter.by(router);
 
 console.log(
 	JSON.stringify(
