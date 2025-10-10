@@ -49,6 +49,8 @@ yarn add @ismael1361/router
       - [`by`](#by)
       - [`getSwagger`](#getswagger)
 
+---
+
 ## `create`
 
 ```typescript
@@ -115,6 +117,8 @@ app.listen(3000, () => {
   console.log('Servidor rodando na porta 3000');
 });
 ```
+
+---
 
 ## `middleware`
 
@@ -193,6 +197,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 ## `route`
 
 ```ts
@@ -257,6 +263,8 @@ main.by(router);
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 ## `Router`
 
 ```ts
@@ -267,6 +275,8 @@ A classe `Router` é o principal objeto com o qual você irá interagir. Ela enc
 
 Uma instância do `Router` é retornada pela função `create` ou pelo método `.route()`.
 
+---
+
 ### Propriedades da Instância
 
 #### `router`
@@ -276,6 +286,8 @@ Uma instância do `Router` é retornada pela função `create` ou pelo método `
 ```
 
 A instância do roteador do Express. Usada internamente para definir rotas e middlewares.
+
+---
 
 #### `routes`
 
@@ -290,6 +302,8 @@ A instância do roteador do Express. Usada internamente para definir rotas e mid
 
 Um array que armazena as rotas e middlewares definidos na instância. Essas rotas e middlewares serão usadas para gerar a documentação OpenAPI.
 
+---
+
 ### Métodos da Instância
 
 #### `get`
@@ -302,16 +316,16 @@ Registra uma rota que responde a requisições HTTP do método GET. Este método
 
 Após chamar `.get()`, você deve encadear o método `.handle()` para fornecer a lógica do controlador e, opcionalmente, o método `.doc()` para adicionar a documentação OpenAPI.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): A string do caminho da URL para a rota. O caminho é relativo ao prefixo do roteador. Pode conter parâmetros de rota, como `/users/:id`.
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler`, que é um objeto intermediário com os seguintes métodos encadeáveis:
   - `.middleware()`: Para aplicar middlewares específicos a esta rota.
   - `.handle()`: Para definir a função controladora que processará a requisição.
   - `.doc()`: Para fornecer metadados de documentação OpenAPI para a rota.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -352,6 +366,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `post`
 
 ```ts
@@ -362,13 +378,13 @@ Registra uma rota que responde a requisições HTTP do método POST. Este métod
 
 Após chamar `.post()`, você deve encadear o método `.handle()` para fornecer a lógica do controlador (que geralmente acessa `req.body`) e, opcionalmente, o método `.doc()` para documentar o corpo da requisição e as possíveis respostas.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): A string do caminho da URL para a rota.
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento dos métodos `.middleware()`, `.handle()` e `.doc()`.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -411,6 +427,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `put`
 
 ```ts
@@ -419,13 +437,13 @@ app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 
 Registra uma rota que responde a requisições HTTP do método PUT. Este método é usado para **substituir completamente um recurso existente** com os novos dados fornecidos no corpo da requisição.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho da URL, geralmente contendo um parâmetro para identificar o recurso a ser atualizado (ex: `/users/:id`).
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -455,6 +473,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `delete`
 
 ```ts
@@ -463,13 +483,13 @@ app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 
 Registra uma rota que responde a requisições HTTP do método DELETE. Este método é utilizado para **remover um recurso específico**.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho da URL, que deve conter um parâmetro para identificar o recurso a ser removido (ex: `/items/:id`).
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -499,6 +519,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `patch`
 
 ```ts
@@ -507,13 +529,13 @@ app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 
 Registra uma rota que responde a requisições HTTP do método PATCH. É usado para aplicar **atualizações parciais** a um recurso, modificando apenas os campos enviados no corpo da requisição.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho da URL, geralmente com um parâmetro para identificar o recurso (ex: `/tasks/:id`).
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -543,6 +565,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `options`
 
 ```ts
@@ -551,13 +575,13 @@ app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 
 Registra uma rota que responde a requisições HTTP do método OPTIONS. Este método é usado pelo navegador para determinar as opções de comunicação para um recurso de destino, principalmente em requisições de **pré-voo (pre-flight) do CORS**.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho da URL do recurso.
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -584,6 +608,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `head`
 
 ```ts
@@ -592,13 +618,13 @@ app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 
 Registra uma rota que responde a requisições HTTP do método HEAD. É idêntico ao GET, mas o servidor **não envia o corpo da resposta**. É útil para verificar metadados de um recurso, como `Content-Length` ou `Last-Modified`, sem precisar baixar o conteúdo completo.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho da URL do recurso.
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -628,6 +654,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `all`
 
 ```ts
@@ -636,13 +664,13 @@ app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 
 Registra uma rota que responde a **todos os métodos HTTP** (GET, POST, PUT, etc.) para um caminho específico. É útil para aplicar lógica genérica a um endpoint, como logging ou validações que independem do método.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho da URL.
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `RequestHandler` para encadeamento.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -669,6 +697,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `use`
 
 ```ts
@@ -679,13 +709,13 @@ Monta uma função de middleware ou uma série de middlewares em um caminho espe
 
 É ideal para tarefas como logging, parsing de corpo de requisição, autenticação e tratamento de erros. Se nenhum caminho for especificado, o middleware será aplicado a todas as rotas definidas no roteador.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (opcional): O caminho no qual o middleware será aplicado. Suporta wildcards (ex: `/api/*`).
 
-* Retorno
+* **Retorno**
     Retorna a própria instância do `Router`, permitindo o encadeamento de mais definições.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response, NextFunction } from '@ismael1361/router';
@@ -711,6 +741,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `route`
 
 ```ts
@@ -721,13 +753,13 @@ Cria e retorna uma nova instância de `Router` que é montada sob um caminho (pr
 
 Todas as rotas definidas no roteador retornado serão relativas ao `path` fornecido.
 
-* Parâmetros
+* **Parâmetros**
   - `path` (string): O caminho do prefixo para o novo roteador. Por exemplo, `/api/v1`.
 
-* Retorno
+* **Retorno**
     Retorna uma nova instância de `Router` que pode ser usada para definir um grupo de rotas.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response } from '@ismael1361/router';
@@ -759,6 +791,8 @@ usersRouter
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `middleware`
 
 ```ts
@@ -769,13 +803,13 @@ Aplica uma função de middleware a **todas as rotas subsequentes** definidas ne
 
 A tipagem do `Request` e `Response` é inteligentemente mesclada, garantindo que as propriedades adicionadas por um middleware (ex: `req.user`) estejam disponíveis e corretamente tipadas nos handlers das rotas.
 
-* Parâmetros
+* **Parâmetros**
   - `callbacks`: Uma função de middleware do Express.
 
-* Retorno
+* **Retorno**
     Retorna a própria instância do `Router`, com os tipos de `Request` e `Response` atualizados, permitindo o encadeamento contínuo.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, middleware, Request, Response, NextFunction } from '@ismael1361/router';
@@ -808,6 +842,8 @@ router
 app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
+---
+
 #### `handler`
 
 ```ts
@@ -818,13 +854,13 @@ Define a função controladora (handler) que processará a requisição para uma
 
 Ele deve ser encadeado após a definição de um método HTTP (como `.get()`, `.post()`) ou de um middleware (`.use()`). A função de `callback` recebe os objetos `req` e `res`, que são fortemente tipados com base nos middlewares aplicados anteriormente.
 
-* Parâmetros
+* **Parâmetros**
   - `callback`: A função controladora que processará a requisição, com a assinatura `(req, res, next)`.
 
-* Retorno
+* **Retorno**
     Retorna uma instância de `PreparedHandler`, que permite encadear o método `.doc()` para adicionar a documentação OpenAPI.
 
-* Exemplo de Uso
+* **Exemplo de Uso**
 ```typescript
 import express from 'express';
 import { create, Request, Response, NextFunction } from '@ismael1361/router';
@@ -851,14 +887,102 @@ app.listen(3000, () => {
 });
 ```
 
+---
+
 #### `by`
 
 ```ts
 .by(router: ExpressRouter | Router<Request, Response>): this;
 ```
 
+Anexa um roteador existente (seja uma instância do `Router` desta biblioteca ou um `express.Router` padrão) ao roteador atual. Este método é uma forma conveniente de compor e modularizar sua aplicação, permitindo que você defina grupos de rotas em arquivos separados e depois os integre ao roteador principal.
+
+* **Parâmetros**
+  - `router`: A instância do roteador a ser anexada.
+
+* **Retorno**
+  - Retorna a própria instância do `Router` (`this`), permitindo o encadeamento de mais chamadas.
+
+* **Exemplo de Uso**
+```typescript
+import express from 'express';
+import { create, route, Request, Response } from '@ismael1361/router';
+
+const app = express();
+const mainRouter = create(app);
+
+// 1. Crie um roteador separado para as rotas de produtos
+const productsRouter = route('/products');
+
+productsRouter
+  .get('/')
+  .handle((req, res) => {
+    res.json([{ id: 'p1', name: 'Laptop' }]);
+  })
+  .doc({ summary: 'Listar produtos', tags: ['Products'] });
+
+// 2. Use o método .by() para anexar o roteador de produtos ao roteador principal
+mainRouter.by(productsRouter);
+
+// A rota GET /products está agora ativa na aplicação.
+app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
+```
+
+---
+
 #### `getSwagger`
 
 ```ts
 .getSwagger(options?: swaggerJSDoc.OAS3Definition, defaultResponses?: swaggerJSDoc.Responses): swaggerJSDoc.Options;
+```
+
+Coleta todas as informações de documentação fornecidas através dos métodos `.doc()` em todas as rotas e as compila em um objeto de opções compatível com a biblioteca `swagger-jsdoc`. Este objeto pode ser usado para gerar a especificação OpenAPI completa (geralmente um arquivo `swagger.json`).
+
+* **Parâmetros**
+  - `options` (opcional): Um objeto de definição base do OpenAPI 3.0. Aqui você define informações globais da sua API, como `info` (título, versão), `servers`, `components` (schemas, securitySchemes), etc.
+  - `defaultResponses` (opcional): Um objeto para definir respostas padrão que serão mescladas em todas as rotas, como `500: { description: 'Erro interno do servidor' }`.
+
+* **Retorno**
+  - Retorna um objeto de opções (`swaggerJSDoc.Options`) que pode ser passado diretamente para a função `swaggerJSDoc()` para gerar a documentação.
+
+* **Exemplo de Uso**
+```typescript
+import swaggerJSDoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
+
+// ... (definição do seu app e rotas com .doc())
+
+// 1. Defina as opções base para a sua documentação OpenAPI
+const swaggerDefinition: swaggerJSDoc.OAS3Definition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'Minha API Incrível',
+    version: '1.0.0',
+    description: 'Documentação da API criada com @ismael1361/router',
+  },
+  servers: [{ url: 'http://localhost:3000' }],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
+};
+
+// 2. Gere as opções completas usando o método .getSwagger() do seu roteador
+const swaggerOptions = router.getSwagger(swaggerDefinition);
+
+// 3. Gere a especificação final com swagger-jsdoc
+const swaggerSpec = swaggerJSDoc(swaggerOptions);
+
+// 4. Sirva a documentação usando swagger-ui-express
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.listen(3000, () => {
+  console.log('Servidor rodando na porta 3000');
+  console.log('Documentação disponível em http://localhost:3000/api-docs');
+});
 ```
