@@ -1,6 +1,6 @@
 # @ismael1361/router
 
-Esse módulo foi criado para preparar e centralizar rotas em um Express.js com tipagem encadeada e documentação OpenAPI/Swagger integrada.
+Esse módulo foi criado para preparar e centralizar rotas em um Express.js com tipagem encadeada, útil para tipar conteúdo de escobo e propriedades de requisição como `body`, `params` e `query`. Também oferece a geração de documentação OpenAPI/Swagger integrada.
 
 ## Instalação
 
@@ -128,7 +128,7 @@ import express from 'express';
 import { create, middleware, Request, Response } from '@ismael1361/router';
 
 interface AuthRequest extends Request {
-	user: { id: string; roles: string[] };
+  user: { id: string; roles: string[] };
 }
 
 // 1. Crie o middleware de autenticação com sua documentação
