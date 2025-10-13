@@ -152,3 +152,12 @@ export type MiddlewareFC<Req extends Request = any, Res extends Response = any> 
 };
 
 export type HandlerFC<Req extends Request = any, Res extends Response = any> = ((req: Request & Req, res: Response & Res, next: NextFunction) => any) | PreparedHandler<Req, Res>;
+
+export interface ILayer<R> {
+	path?: string;
+	method: RouterMethods;
+
+	route?: R;
+	handle?: Array<HandlerFC | MiddlewareFC>;
+	doc?: MiddlewareFCDoc;
+}

@@ -1,9 +1,10 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import { ExpressRouter, HandlerFC, MiddlewareFC, MiddlewareFCDoc, RouterMethods, Request, Response } from "./type";
+import { ExpressRouter, HandlerFC, MiddlewareFC, MiddlewareFCDoc, RouterMethods, Request, Response, ILayer } from "./type";
 import Express from "express";
 import { RequestHandler, PreparedHandler } from "./handler";
 import { getRoutes, joinObject } from "./utils";
 import { createDynamicMiddleware } from "./utils";
+import { Layer } from "./Layer";
 
 /**
  * A classe `Router` é um wrapper em torno do roteador do Express, oferecendo uma API fluente
@@ -84,6 +85,8 @@ import { createDynamicMiddleware } from "./utils";
  * });
  */
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
+	readonly stack: Layer = new Layer();
+
 	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router(), readonly rootPath: string = "", readonly previousRouter?: Router) {}
 
 	/**
