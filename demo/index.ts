@@ -85,7 +85,6 @@ v1_router.post("/users").handler((req, res) => res.json({ users: [] }));
 
 userRouter.by(v1_router);
 
-console.log(JSON.stringify(v1_router.previousRouter!.router, null, 4));
 console.log(JSON.stringify(v1_router.router.toString(), null, 4));
 
 userRouter.get("/routes").handler((req, res) => res.json(userRouter.router.stack));

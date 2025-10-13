@@ -84,7 +84,7 @@ import { createDynamicMiddleware } from "./utils";
  * });
  */
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
-	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router(), readonly previousRouter?: Router) {}
+	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router(), readonly rootPath: string = "", readonly previousRouter?: Router) {}
 
 	/**
 	 * Adiciona um middleware que será aplicado a todas as rotas definidas subsequentemente
@@ -191,7 +191,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	get(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "get", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "get", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -200,7 +200,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	post(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "post", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "post", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -209,7 +209,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	put(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "put", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "put", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -218,7 +218,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	delete(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "delete", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "delete", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -227,7 +227,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	patch(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "patch", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "patch", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -236,7 +236,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	options(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "options", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "options", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -245,7 +245,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	head(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "head", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "head", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -254,7 +254,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	all(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "all", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "all", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -263,7 +263,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	use(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "use", path, [], [...this.middlewares]);
+		return new RequestHandler(this.router, "use", this.rootPath + path, [], [...this.middlewares]);
 	}
 
 	/**
@@ -383,9 +383,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * app.use(mainRouter.router);
 	 */
 	route(path: string): Router<Rq, Rs> {
-		const router = Express.Router();
-		this.router.use(path, router);
-		return new Router([...this.middlewares], router, this);
+		return new Router([...this.middlewares], this.router, path);
 	}
 
 	/**
@@ -425,7 +423,14 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * app.use('/api', apiRouter.router);
 	 */
 	by(router: Router | ExpressRouter) {
-		this.router.use(router instanceof Router ? router.previousRouter?.router || router.router : router);
+		if (router instanceof Router) {
+			const routes = router.previousRouter?.router || router.router;
+			for (const route of routes.stack) {
+				this.router.stack.push(route);
+			}
+		} else {
+			this.router.use(router instanceof Router ? router.previousRouter?.router || router.router : router);
+		}
 		return this;
 	}
 }

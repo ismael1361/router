@@ -259,11 +259,11 @@ export function tryHandler(handler: MiddlewareFC<any, any>) {
  * });
  */
 export function createDynamicMiddleware<Req extends Request = Request, Res extends Response = Response>(middleware: MiddlewareFC<Req, Res>): MiddlewareFC<Req, Res> {
-	(middleware as any).doc = (middleware as any)?.doc || {};
+	middleware.doc = middleware?.doc || {};
 	if ("name" in middleware && middleware.name === "router") {
 		return middleware as any;
 	}
-	const callback = (req: any, res: Response, next: NextFunction) => {
+	const callback: MiddlewareFC<Req, Res> = (req: any, res: Response, next: NextFunction) => {
 		try {
 			const xForwardedFor = (req.headers["x-forwarded-for"] || "").replace(/:\d+$/, "");
 			req.clientIp = xForwardedFor || req.connection.remoteAddress;
@@ -290,6 +290,6 @@ export function createDynamicMiddleware<Req extends Request = Request, Res exten
 			next();
 		}
 	};
-	(callback as any).doc = (middleware as any)?.doc || {};
+	callback.doc = middleware.doc || {};
 	return callback;
 }

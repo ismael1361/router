@@ -1,4 +1,4 @@
-import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction, Router as ExpressRouter, Express as ExpressApp, RequestHandler, Locals } from "express";
+import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction, Router as ExpressRouter, IRoute, Express as ExpressApp, RequestHandler, Locals } from "express";
 import type swaggerJSDoc from "swagger-jsdoc";
 import type { PreparedHandler } from "./handler";
 
