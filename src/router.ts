@@ -84,7 +84,7 @@ import { createDynamicMiddleware } from "./utils";
  * });
  */
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
-	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router()) {}
+	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router(), readonly previousRouter?: Router) {}
 
 	/**
 	 * Adiciona um middleware que será aplicado a todas as rotas definidas subsequentemente
@@ -385,7 +385,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	route(path: string): Router<Rq, Rs> {
 		const router = Express.Router();
 		this.router.use(path, router);
-		return new Router([...this.middlewares], router);
+		return new Router([...this.middlewares], router, this);
 	}
 
 	/**
@@ -425,7 +425,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * app.use('/api', apiRouter.router);
 	 */
 	by(router: Router | ExpressRouter) {
-		this.router.use(router instanceof Router ? router.router : router);
+		this.router.use(router instanceof Router ? router.previousRouter?.router || router.router : router);
 		return this;
 	}
 }

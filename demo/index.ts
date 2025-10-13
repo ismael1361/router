@@ -1,6 +1,13 @@
 import { middleware, create, route, Request } from "../src";
+import express from "express";
 
-interface AuthRequest extends Request<"userId" | "id", { userId: string; user?: Record<string, any> }> {
+const app = express();
+const port = 8080;
+
+app.enable("trust proxy");
+
+interface AuthRequest extends Request<"userId" | "id", any> {
+	body: { user?: { id: string; roles: string[] } };
 	user: { id: string; roles: string[] };
 }
 
@@ -39,7 +46,7 @@ userRouter
 	.middleware(fileMiddleware) // Aplica o middleware à rota
 	.handler((req, res) => {
 		// 'req.user' está disponível e fortemente tipado aqui.
-		req.body.user?.name;
+		req.body.user?.id;
 		req.files;
 		res.json({ profile: req.user });
 	})
@@ -57,7 +64,7 @@ userRouter
 	});
 
 userRouter
-	.get("/v1")
+	.get("/teste")
 	.handler((req, res) => {
 		res.json({});
 	})
@@ -65,12 +72,26 @@ userRouter
 		summary: "Get router",
 	});
 
-const router = route("/v1");
+const v1_router = route("/v1");
 
-userRouter.by(router);
+v1_router
+	.get("/users")
+	.handler((req, res) => res.json({ users: [] }))
+	.doc({
+		summary: "Listar todos os usuários",
+		tags: ["Users"],
+	});
+v1_router.post("/users").handler((req, res) => res.json({ users: [] }));
 
-console.log(
-	JSON.stringify(
+userRouter.by(v1_router);
+
+console.log(JSON.stringify(v1_router.previousRouter!.router, null, 4));
+console.log(JSON.stringify(v1_router.router.toString(), null, 4));
+
+userRouter.get("/routes").handler((req, res) => res.json(userRouter.router.stack));
+
+userRouter.get("/doc").handler((req, res) =>
+	res.json(
 		userRouter.getSwagger(
 			{ openapi: "3.0.0", info: { title: "My API", version: "1.0.0" } },
 			{
@@ -82,7 +103,11 @@ console.log(
 				500: { description: "Erro interno do servidor" },
 			},
 		),
-		null,
-		4,
 	),
 );
+
+app.use(userRouter.router);
+
+app.listen(port, () => {
+	console.log(`Example app listening on port ${port}`);
+});
