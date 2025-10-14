@@ -1,6 +1,10 @@
 import { HandlerFC, ILayer, IRoute, MiddlewareFC, MiddlewareFCDoc, RouterMethods } from "./type";
 import { joinObject } from "./utils";
 
+const joinPath = (...paths: string[]) => {
+	return ["", ...paths.map((p) => p.replace(/(^\/+)|(\/+$)/gi, "")).filter((p) => p.trim() !== "")].join("/");
+};
+
 const getDocHandles = (...handles: (HandlerFC<any, any> | MiddlewareFC<any, any>)[]) => {
 	return (handles.map((handle) => handle.doc).filter((doc) => doc !== undefined) as MiddlewareFCDoc[]).filter((d) => Object.keys(d).length > 0);
 };
@@ -23,8 +27,8 @@ export class Layer extends Array<ILayer> {
 		return this;
 	}
 
-	route(path?: string, doc?: MiddlewareFCDoc) {
-		const route = new Layer(this.path + path, doc);
+	route(path: string = "", doc?: MiddlewareFCDoc) {
+		const route = new Layer(joinPath(this.path, path), doc);
 		this.push({ path: "", method: "use", type: "route", route });
 		return route;
 	}
@@ -70,7 +74,7 @@ export class Layer extends Array<ILayer> {
 					(layer.route as Layer).routes.forEach((route) => {
 						const handles = [...middlewares, ...(layer.handle || []), ...route.handle];
 						routes.push({
-							path: (layer.path || "") + route.path,
+							path: joinPath(layer.path || "", route.path),
 							method: route.method,
 							handle: handles,
 							doc: joinDocs(...docs, ...getDocHandles(...handles), layer.doc || {}, route.doc || {}),
@@ -99,38 +103,38 @@ export class Layer extends Array<ILayer> {
 	}
 
 	get(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "get", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "get", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	post(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "post", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "post", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	put(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "put", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "put", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	delete(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "delete", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "delete", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	patch(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "patch", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "patch", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	options(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "options", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "options", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	head(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "head", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "head", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	all(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "all", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "all", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 
 	use(path: string, handle: Array<HandlerFC | MiddlewareFC>, doc: MiddlewareFCDoc = {}) {
-		return this.pushPath("layer", "use", this.path + path, handle, joinDocs(this.doc, doc));
+		return this.pushPath("layer", "use", joinPath(this.path, path), handle, joinDocs(this.doc, doc));
 	}
 }
