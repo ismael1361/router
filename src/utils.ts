@@ -13,8 +13,12 @@ export const joinObject = <T extends Object = any>(obj: T, ...objs: Array<Partia
 		return obj;
 	}
 
-	objs.filter((o) => !(!Array.isArray(obj) && isConstructedObject(obj))).forEach((o) => {
+	objs.filter((o) => !(!Array.isArray(obj) && isConstructedObject(obj)) && Object.keys(o).length > 0).forEach((o) => {
 		for (let key in o) {
+			if (o[key] === undefined) {
+				continue;
+			}
+
 			if (o[key] === null || (!Array.isArray(o[key]) && isConstructedObject(o[key]))) {
 				obj[key] = o[key] as any;
 				continue;

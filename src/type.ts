@@ -1,4 +1,4 @@
-import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction, Router as ExpressRouter, IRoute, Express as ExpressApp, RequestHandler, Locals } from "express";
+import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction, Router as ExpressRouter, Express as ExpressApp, RequestHandler, Locals } from "express";
 import type swaggerJSDoc from "swagger-jsdoc";
 import type { PreparedHandler } from "./handler";
 
@@ -151,13 +151,37 @@ export type MiddlewareFC<Req extends Request = any, Res extends Response = any> 
 	doc?: MiddlewareFCDoc;
 };
 
-export type HandlerFC<Req extends Request = any, Res extends Response = any> = ((req: Request & Req, res: Response & Res, next: NextFunction) => any) | PreparedHandler<Req, Res>;
+export type HandlerFC<Req extends Request = any, Res extends Response = any> = (((req: Request & Req, res: Response & Res, next: NextFunction) => any) | PreparedHandler<Req, Res>) & {
+	doc?: MiddlewareFCDoc;
+};
 
-export interface ILayer<R> {
-	path?: string;
+export type ILayer = {
 	method: RouterMethods;
+	type: "layer" | "route" | "middleware";
+	doc?: MiddlewareFCDoc;
+} & (
+	| {
+			path?: string;
+			type: "route";
+			route: ILayer[];
+			handle?: Array<HandlerFC | MiddlewareFC>;
+	  }
+	| {
+			path: string;
+			method: RouterMethods;
+			type: "layer";
+			handle: Array<HandlerFC | MiddlewareFC>;
+	  }
+	| {
+			method: RouterMethods;
+			type: "middleware";
+			handle: Array<HandlerFC | MiddlewareFC>;
+	  }
+);
 
-	route?: R;
-	handle?: Array<HandlerFC | MiddlewareFC>;
+export interface IRoute {
+	path: string;
+	method: RouterMethods;
+	handle: Array<HandlerFC | MiddlewareFC>;
 	doc?: MiddlewareFCDoc;
 }
