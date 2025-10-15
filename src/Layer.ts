@@ -67,7 +67,9 @@ export class Layer extends Array<ILayer> {
 		return Array.from(this).map(({ route, ...props }: any): ILayer => {
 			return {
 				...props,
-				route: route?.stack,
+				get route() {
+					return route?.stack;
+				},
 			};
 		});
 	}
