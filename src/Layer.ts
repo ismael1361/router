@@ -27,10 +27,26 @@ export class Layer extends Array<ILayer> {
 		return this;
 	}
 
-	route(path: string = "", doc?: MiddlewareFCDoc) {
-		const route = new Layer(joinPath(this.path, path), doc);
-		this.push({ path: "", method: "use", type: "route", route });
-		return route;
+	route(path: string, route: Layer, doc?: MiddlewareFCDoc): Layer;
+	route(path: string, doc?: MiddlewareFCDoc): Layer;
+	route(route: Layer, doc?: MiddlewareFCDoc): Layer;
+	route(doc?: MiddlewareFCDoc): Layer;
+	route(...args: any[]) {
+		const path: string = typeof args[0] === "string" ? args[0] : "";
+		const doc: MiddlewareFCDoc = args[1] instanceof Layer ? args[2] : args[0] instanceof Layer || typeof args[0] === "string" ? args[1] : args[0];
+		const root = new Layer(joinPath(this.path, path), doc);
+
+		this.push({ path: "", method: "use", type: "route", route: root });
+
+		if (args[0] instanceof Layer || args[1] instanceof Layer) {
+			const route: Layer = args[0] instanceof Layer ? args[0] : args[1];
+
+			root.push({ path: "", method: "use", type: "route", route });
+
+			return route;
+		}
+
+		return root;
 	}
 
 	static route(path?: string, doc?: MiddlewareFCDoc) {
@@ -43,8 +59,7 @@ export class Layer extends Array<ILayer> {
 		const _path: string = typeof path === "string" ? path : path.path;
 		const _route: Layer = typeof path === "string" ? (route as Layer) : (path as Layer);
 		const _doc: MiddlewareFCDoc | undefined = typeof path === "string" ? doc : route;
-
-		this.route(_path, _doc).push({ path: "", method: "use", type: "route", route: _route });
+		this.route(_path, _route, _doc);
 		return this;
 	}
 
