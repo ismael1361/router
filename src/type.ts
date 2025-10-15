@@ -148,10 +148,12 @@ export type MiddlewareRequest<Req = Request> = Request &
  */
 export type MiddlewareFC<Req extends Request = any, Res extends Response = any> = {
 	(req: MiddlewareRequest<Req>, res: Response & Res, next: NextFunction): any;
+	id?: string;
 	doc?: MiddlewareFCDoc;
 };
 
 export type HandlerFC<Req extends Request = any, Res extends Response = any> = (((req: Request & Req, res: Response & Res, next: NextFunction) => any) | PreparedHandler<Req, Res>) & {
+	id?: string;
 	doc?: MiddlewareFCDoc;
 };
 

@@ -271,9 +271,7 @@ export function createDynamicMiddleware<Req extends Request = Request, Res exten
 		try {
 			const xForwardedFor = (req.headers["x-forwarded-for"] || "").replace(/:\d+$/, "");
 			req.clientIp = xForwardedFor || req.connection.remoteAddress;
-		} catch (error) {
-			console.error(error);
-		}
+		} catch {}
 
 		if (!(req.__executedMiddlewares__ instanceof Set)) req.__executedMiddlewares__ = new Set();
 
@@ -283,10 +281,12 @@ export function createDynamicMiddleware<Req extends Request = Request, Res exten
 
 		const executedSet = req.__executedMiddlewares__;
 
-		if (!executedSet.has(middleware)) {
+		const id = typeof middleware.id === "string" ? middleware.id : middleware;
+
+		if (!executedSet.has(id)) {
 			req.executeOnce = (isOnce: boolean = true) => {
-				if (isOnce) executedSet.add(middleware);
-				else executedSet.delete(middleware);
+				if (isOnce) executedSet.add(id);
+				else executedSet.delete(id);
 			};
 
 			tryHandler(middleware)(req, res, next);
@@ -294,6 +294,7 @@ export function createDynamicMiddleware<Req extends Request = Request, Res exten
 			next();
 		}
 	};
+	callback.id = middleware.id || undefined;
 	callback.doc = middleware.doc || {};
 	return callback;
 }

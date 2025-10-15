@@ -1,6 +1,7 @@
 import type { Request, Response, MiddlewareFC, ExpressRouter, ExpressApp, MiddlewareFCDoc } from "./type";
 import { Router } from "./router";
 import Express from "express";
+import { uuidv4 } from "@ismael1361/utils";
 
 export type * from "./type";
 
@@ -119,6 +120,7 @@ export function create<Req extends Request = Request, Res extends Response = Res
  * // será incluído na documentação final.
  */
 export function middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Req, Res>, doc?: MiddlewareFCDoc): MiddlewareFC<Req, Res> {
+	callback.id = uuidv4("-");
 	callback.doc = doc;
 	return callback;
 }

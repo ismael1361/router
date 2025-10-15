@@ -119,6 +119,7 @@ testeRoute.middleware(
 		(req, res, next) => {
 			next();
 		},
+		express.json(),
 	],
 	{
 		security: [{ BearerAuth: [] }],
