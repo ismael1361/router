@@ -155,7 +155,10 @@ teste2Route.middleware([
 
 teste2Route.get("/users", [(req, res) => res.json({ users: [] })], { summary: "Get user profile" });
 
-teste2Route.route("/sprit").get("/lists", [(req, res) => res.json({ users: [] })], { summary: "Get sprit lists" });
+teste2Route
+	.route("/sprit")
+	.route("/teste")
+	.get("/lists", [(req, res) => res.json({ users: [] })], { summary: "Get sprit lists" });
 
 testeRoute.by(teste2Route);
 

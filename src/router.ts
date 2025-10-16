@@ -85,9 +85,13 @@ import { Layer } from "./Layer";
  * });
  */
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
-	readonly stack: Layer = new Layer();
+	readonly layers: Layer = new Layer();
 
 	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router(), readonly rootPath: string = "", readonly previousRouter?: Router) {}
+
+	doc(operation: swaggerJSDoc.Operation, components: swaggerJSDoc.Components = {}) {
+		this.layers.doc = { ...operation, components };
+	}
 
 	/**
 	 * Adiciona um middleware que será aplicado a todas as rotas definidas subsequentemente
