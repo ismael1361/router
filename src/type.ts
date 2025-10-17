@@ -126,32 +126,15 @@ export type MiddlewareRequest<Req = Request> = Request &
 		executeOnce(isOnce?: boolean): void;
 	};
 
-/**
- * Define a assinatura para uma função de middleware que será chamada quando uma rota for correspondida.
- * @param req O objeto da requisição, estendido com o método `executeOnce`.
- * @param res O objeto da resposta.
- * @param next A função para chamar o próximo middleware na pilha.
- * @template Req O tipo do objeto de requisição do Express.
- * @template Res O tipo do objeto de resposta do Express.
- * @example
- * ```ts
- * import { MiddlewareFC } from "utils/Router2";
- *
- * // Middleware que adiciona uma propriedade 'user' à requisição.
- * const authMiddleware: MiddlewareFC = (req, res, next) => {
- *   // Em um cenário real, você validaria um token e buscaria o usuário.
- *   (req as any).user = { id: 1, name: "Usuário Teste" };
- *   next();
- * };
- * ```
- */
-export type MiddlewareFC<Req extends Request = any, Res extends Response = any> = {
+export type HandlerFC<Req extends Request = any, Res extends Response = any> = {
 	(req: MiddlewareRequest<Req>, res: Response & Res, next: NextFunction): any;
 	id?: string;
 	doc?: MiddlewareFCDoc;
 };
 
-export type HandlerFC<Req extends Request = any, Res extends Response = any> = MiddlewareFC<Req, Res>;
+export type MiddlewareFC<Req extends Request = any, Res extends Response = any> = HandlerFC<Req, Res> & {
+	next?: MiddlewareFC<Request, Response>;
+};
 
 export type ILayer = {
 	method: RouterMethods;
