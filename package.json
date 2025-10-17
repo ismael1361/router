@@ -64,6 +64,7 @@
 	},
 	"dependencies": {
 		"@ismael1361/utils": "^1.0.4",
+		"body-parser": "^2.2.0",
 		"express": "^5.1.0",
 		"swagger-jsdoc": "^6.2.8"
 	}

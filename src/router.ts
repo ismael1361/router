@@ -1,10 +1,10 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import { ExpressRouter, HandlerFC, MiddlewareFC, MiddlewareFCDoc, RouterMethods, Request, Response, ILayer } from "./type";
-import Express from "express";
-import { RequestHandler, PreparedHandler } from "./handler";
-import { getRoutes, joinObject } from "./utils";
-import { createDynamicMiddleware } from "./utils";
+import { MiddlewareFC, Request, Response } from "./type";
+import { RequestHandler } from "./handler";
+import { createDynamicMiddleware, getRoutes, joinObject } from "./utils";
 import { Layer } from "./Layer";
+import * as http from "http";
+import express, { Express } from "express";
 
 /**
  * A classe `Router` é um wrapper em torno do roteador do Express, oferecendo uma API fluente
@@ -85,9 +85,11 @@ import { Layer } from "./Layer";
  * });
  */
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
-	readonly layers: Layer = new Layer();
+	app: Express = express();
 
-	constructor(public readonly middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router(), readonly rootPath: string = "", readonly previousRouter?: Router) {}
+	constructor(readonly routePath: string = "", readonly layers: Layer = new Layer()) {
+		this.layers.path = routePath;
+	}
 
 	doc(operation: swaggerJSDoc.Operation, components: swaggerJSDoc.Components = {}) {
 		this.layers.doc = { ...operation, components };
@@ -136,60 +138,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * });
 	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Rq & Req, Rs & Res>): Router<Rq & Req, Rs & Res> {
-		this.router.use(createDynamicMiddleware(callback) as any);
-		return new Router([...this.middlewares, callback], this.router);
-	}
-
-	/**
-	 * Encapsula uma função de handler final e todos os middlewares encadeados anteriormente
-	 * em uma única instância reutilizável de `PreparedHandler`.
-	 *
-	 * Este método é o ponto final para a criação de "controllers" ou "actions" modulares.
-	 * Ele pega a lógica do handler e a combina com os middlewares definidos na cadeia do roteador
-	 * (`.middleware(...)`), produzindo um objeto que pode ser passado para o método `.handler()`
-	 * de uma definição de rota (por exemplo, `router.get(...).handler(controller)`).
-	 *
-	 * @template Req - Tipos de requisição adicionais inferidos a partir do handler.
-	 * @template Res - Tipos de resposta adicionais inferidos a partir do handler.
-	 * @param {HandlerFC<Rq & Req, Rs & Res>} callback - A função de handler final ou uma instância de `PreparedHandler` já existente. Se um `PreparedHandler` for fornecido, seus middlewares serão combinados com os middlewares da cadeia atual.
-	 * @returns {PreparedHandler<Rq & Req, Rs & Res>} Uma nova instância de `PreparedHandler` que encapsula o handler e a cadeia completa de middlewares.
-	 *
-	 * @example
-	 * // 1. Defina middlewares para autenticação e autorização.
-	 * interface AuthRequest extends Request { user: { id: number; role: string }; }
-	 * const authMiddleware: MiddlewareFC<AuthRequest> = (req, res, next) => {
-	 *   req.user = { id: 1, role: 'admin' }; // Simula a autenticação
-	 *   next();
-	 * };
-	 *
-	 * const adminOnlyMiddleware: MiddlewareFC<AuthRequest> = (req, res, next) => {
-	 *   if (req.user.role !== 'admin') return res.status(403).send('Forbidden');
-	 *   next();
-	 * };
-	 *
-	 * // 2. Defina o handler final que depende dos middlewares.
-	 * const getDashboard: HandlerFC<AuthRequest> = (req, res) => {
-	 *   res.send(`Welcome, admin user ${req.user.id}`);
-	 * };
-	 *
-	 * // 3. Crie um "construtor" de controller encadeando os middlewares.
-	 * const controllerBuilder = new Router().middleware(authMiddleware).middleware(adminOnlyMiddleware);
-	 *
-	 * // 4. Use o método `.handler()` para criar o controller reutilizável.
-	 * const getDashboardController = controllerBuilder.handler(getDashboard);
-	 *
-	 * // 5. Agora, `getDashboardController` pode ser usado em qualquer rota.
-	 * const mainRouter = new Router();
-	 * mainRouter.get('/admin/dashboard').handler(getDashboardController);
-	 * // A rota acima aplicará automaticamente `authMiddleware` e `adminOnlyMiddleware`
-	 * // antes de executar `getDashboard`.
-	 */
-	handler<Req extends Request = Request, Res extends Response = Response>(callback: HandlerFC<Rq & Req, Rs & Res>): PreparedHandler<Rq & Req, Rs & Res> {
-		if (callback instanceof PreparedHandler) {
-			return new PreparedHandler(callback.callback, [...this.middlewares, ...callback.middlewares]);
-		}
-
-		return new PreparedHandler(callback, [...this.middlewares]);
+		this.layers.middleware([callback].map(createDynamicMiddleware));
+		return this;
 	}
 
 	/**
@@ -198,7 +148,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	get(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "get", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "get", path);
 	}
 
 	/**
@@ -207,7 +157,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	post(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "post", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "post", path);
 	}
 
 	/**
@@ -216,7 +166,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	put(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "put", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "put", path);
 	}
 
 	/**
@@ -225,7 +175,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	delete(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "delete", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "delete", path);
 	}
 
 	/**
@@ -234,7 +184,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	patch(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "patch", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "patch", path);
 	}
 
 	/**
@@ -243,7 +193,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	options(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "options", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "options", path);
 	}
 
 	/**
@@ -252,7 +202,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	head(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "head", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "head", path);
 	}
 
 	/**
@@ -261,7 +211,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	all(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "all", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "all", path);
 	}
 
 	/**
@@ -270,7 +220,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
 	use(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this.router, "use", this.rootPath + path, [], [...this.middlewares]);
+		return new RequestHandler(this, "use", path);
 	}
 
 	/**
@@ -279,7 +229,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {Array<{path: string, methods: string[], type: 'ROUTE' | 'MIDDLEWARE', swagger?: object}>}
 	 */
 	get routes() {
-		return getRoutes(this.router);
+		return getRoutes(this.layers);
 	}
 
 	/**
@@ -390,7 +340,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * app.use(mainRouter.router);
 	 */
 	route(path: string): Router<Rq, Rs> {
-		return new Router([...this.middlewares], this.router, path);
+		return new Router("", this.layers.route(path));
 	}
 
 	/**
@@ -429,91 +379,43 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * // As rotas de userRouter agora são acessíveis em '/api/' e '/api/:id'.
 	 * app.use('/api', apiRouter.router);
 	 */
-	by(router: Router | ExpressRouter) {
+	by(router: Router) {
 		if (router instanceof Router) {
-			const routes = router.previousRouter?.router || router.router;
-			for (const route of routes.stack) {
-				this.router.stack.push(route);
-			}
-		} else {
-			this.router.use(router instanceof Router ? router.previousRouter?.router || router.router : router);
+			this.layers.by(router.layers);
 		}
 		return this;
 	}
-}
 
-/**
- * Representa as propriedades de uma rota finalizada, permitindo a adição de metadados, como a documentação Swagger.
- * Esta classe é retornada pelo método `.handler()` e seu principal objetivo é fornecer o método `.doc()`
- * para anexar a documentação OpenAPI a um endpoint.
- *
- * @example
- * // ... continuação do exemplo do RouterContext
- * router.get("/users/:id")
- *   .handler((req, res) => {
- *     res.json({ id: req.params.id, name: "Exemplo" });
- *   })
- *   // O método .doc() é chamado na instância de RouterProps retornada por .handler()
- *   .doc({
- *     summary: "Obtém um usuário pelo ID",
- *     description: "Retorna os detalhes de um usuário específico.",
- *     tags: ["Users"],
- *     parameters: [{
- *       name: "id",
- *       in: "path",
- *       required: true,
- *       schema: { type: "integer" }
- *     }],
- *     responses: {
- *       "200": {
- *         description: "Usuário encontrado."
- *       }
- *     }
- *   });
- */
-export class RouterProps {
-	/**
-	 * @param {RouterMethods} type O método HTTP da rota.
-	 * @param {MiddlewareFC<any, any>[]} middlewares A lista de middlewares aplicados à rota.
-	 * @param {Function} handler A função de handler final da rota.
-	 */
-	constructor(
-		public readonly type: RouterMethods,
-		public readonly middlewares: MiddlewareFC<any, any>[] = [],
-		public readonly handler: Function,
-		public readonly hierarchicalMiddleware: MiddlewareFC<any, any>[] = [],
-	) {}
-
-	/**
-	 * Anexa a documentação Swagger/OpenAPI a uma rota.
-	 * Esta função mescla a documentação fornecida com qualquer documentação
-	 * definida nos middlewares (`middleware.doc`) que foram aplicados à rota.
-	 *
-	 * @param {swaggerJSDoc.Operation} operation O objeto de operação do OpenAPI que descreve o endpoint.
-	 * @param {swaggerJSDoc.Components} [components={}] Definições de componentes reutilizáveis (schemas, securitySchemes, etc.).
-	 * @returns {this} Retorna a própria instância de `RouterProps` para permitir encadeamento futuro (se houver).
-	 */
-	doc(operation: swaggerJSDoc.Operation, components: swaggerJSDoc.Components = {}) {
-		(this.handler as any).swagger = (path: string) => {
-			const middlewares = [...this.hierarchicalMiddleware, ...this.middlewares];
-			const middlewaresDocs = middlewares.map((middleware) => middleware.doc).filter((doc) => doc !== undefined) as MiddlewareFCDoc[];
-
-			const doc = [...middlewaresDocs, { ...operation, components } as MiddlewareFCDoc].reduce(
-				(previous, current) => {
-					const { components, ...operation } = current;
-					return {
-						operation: joinObject(previous.operation, operation || {}),
-						components: joinObject(previous.components, components || {}),
-					};
-				},
-				{
-					operation: {},
-					components: {},
-				} as { operation: swaggerJSDoc.Operation; components: swaggerJSDoc.Components },
-			);
-
-			return { paths: { [path]: { [this.type]: doc.operation } }, components: doc.components };
-		};
+	engine(ext: string, fn: (path: string, options: object, callback: (e: any, rendered?: string) => void) => void) {
+		this.app.engine(ext, fn);
 		return this;
+	}
+
+	enabled(setting: string): boolean {
+		return this.app.enabled(setting);
+	}
+
+	disabled(setting: string): boolean {
+		return this.app.disabled(setting);
+	}
+
+	enable(setting: string) {
+		this.app.enable(setting);
+		return this;
+	}
+
+	disable(setting: string) {
+		this.app.disable(setting);
+		return this;
+	}
+
+	listen(port: number, hostname: string, backlog: number, callback?: (error?: Error) => void): http.Server;
+	listen(port: number, hostname: string, callback?: (error?: Error) => void): http.Server;
+	listen(port: number, callback?: (error?: Error) => void): http.Server;
+	listen(callback?: (error?: Error) => void): http.Server;
+	listen(path: string, callback?: (error?: Error) => void): http.Server;
+	listen(handle: any, listeningListener?: (error?: Error) => void): http.Server;
+	listen(...args: any[]) {
+		return this.app.listen(...args);
 	}
 }

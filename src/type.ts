@@ -1,6 +1,5 @@
 import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction, Router as ExpressRouter, Express as ExpressApp, RequestHandler, Locals } from "express";
 import type swaggerJSDoc from "swagger-jsdoc";
-import type { PreparedHandler } from "./handler";
 
 export { ExpressRequest, NextFunction, ExpressRouter, ExpressApp };
 
@@ -152,10 +151,7 @@ export type MiddlewareFC<Req extends Request = any, Res extends Response = any> 
 	doc?: MiddlewareFCDoc;
 };
 
-export type HandlerFC<Req extends Request = any, Res extends Response = any> = (((req: Request & Req, res: Response & Res, next: NextFunction) => any) | PreparedHandler<Req, Res>) & {
-	id?: string;
-	doc?: MiddlewareFCDoc;
-};
+export type HandlerFC<Req extends Request = any, Res extends Response = any> = MiddlewareFC<Req, Res>;
 
 export type ILayer = {
 	method: RouterMethods;
@@ -186,4 +182,12 @@ export interface IRoute {
 	method: RouterMethods;
 	handle: Array<HandlerFC | MiddlewareFC>;
 	doc?: MiddlewareFCDoc;
+}
+
+export interface RouterProps<Req extends Request = any, Res extends Response = any> {
+	type: RouterMethods;
+	path: string;
+	middlewares: MiddlewareFC<Req, Res>[];
+	handler: HandlerFC<Req, Res>;
+	doc(operation: swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): RouterProps;
 }

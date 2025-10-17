@@ -1,56 +1,8 @@
-import type { Request, Response, ExpressRouter, MiddlewareFC, RouterMethods, HandlerFC } from "./type";
-import { createDynamicMiddleware } from "./utils";
+import type { Request, Response, RouterProps, MiddlewareFC, RouterMethods, HandlerFC } from "./type";
+import { createDynamicMiddleware, joinDocs } from "./utils";
 import { RequestMiddleware } from "./middleware";
-import { RouterProps } from "./router";
-
-/**
- * Encapsula um handler de rota final junto com uma cadeia de middlewares pré-configurados.
- *
- * Esta classe é útil para criar "controllers" ou "actions" reutilizáveis, onde a lógica do handler
- * depende de um conjunto específico de middlewares que devem ser executados antes dele.
- * Em vez de adicionar manualmente os mesmos middlewares a várias rotas, você pode agrupá-los
- * com o handler em uma única unidade.
- *
- * @template Rq - O tipo de requisição (Request) esperado pelo handler final.
- * @template Rs - O tipo de resposta (Response) esperado pelo handler final.
- *
- * @example
- * // 1. Definir um middleware que busca um usuário e o anexa à requisição.
- * interface UserRequest extends Request {
- *   user: { id: number; name: string; };
- * }
- * const findUserByIdMiddleware: MiddlewareFC<UserRequest> = (req, res, next) => {
- *   // Lógica para buscar o usuário pelo ID nos parâmetros da rota
- *   const userId = parseInt(req.params.id, 10);
- *   if (userId === 1) {
- *     req.user = { id: 1, name: "John Doe" };
- *     next();
- *   } else {
- *     res.status(404).send("User not found");
- *   }
- * };
- *
- * // 2. Definir o handler final que usa os dados do middleware.
- * const getUserProfileHandler: HandlerFC<UserRequest> = (req, res) => {
- *   // `req.user` está disponível e tipado graças ao middleware.
- *   res.json(req.user);
- * };
- *
- * // 3. Criar uma instância de `PreparedHandler` que agrupa o middleware e o handler.
- * const getUserProfileController = new PreparedHandler(
- *   getUserProfileHandler,
- *   [findUserByIdMiddleware]
- * );
- *
- * // 4. Usar o controller pré-preparado em uma definição de rota.
- * // O `router` automaticamente aplicará `findUserByIdMiddleware` antes de `getUserProfileHandler`.
- * router.get("/users/:id").handler(getUserProfileController);
- */
-export class PreparedHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestMiddleware<Rq, Rs> {
-	constructor(public readonly callback: HandlerFC<Rq, Rs>, middlewares: MiddlewareFC<any, any>[] = []) {
-		super(undefined, middlewares);
-	}
-}
+import { Router } from "./router";
+import swaggerJSDoc from "swagger-jsdoc";
 
 /**
  * Construtor de rotas que permite o encadeamento de middlewares antes do handler final.
@@ -84,20 +36,16 @@ export class PreparedHandler<Rq extends Request = Request, Rs extends Response =
  *   });
  */
 export class RequestHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestMiddleware<Rq, Rs> {
+	readonly middlewares: MiddlewareFC<any, any>[] = [];
+
 	/**
 	 * @param {ExpressRouter} router - A instância do roteador Express onde a rota será registrada.
 	 * @param {RouterMethods} type - O método HTTP da rota (get, post, etc.).
 	 * @param {string} path - O padrão de caminho da rota.
 	 * @param {MiddlewareFC<any, any>[]} [middlewares=[]] - Uma lista inicial de middlewares.
 	 */
-	constructor(
-		public readonly router: ExpressRouter,
-		public readonly type: RouterMethods,
-		public readonly path: string,
-		middlewares: MiddlewareFC<any, any>[] = [],
-		public readonly hierarchicalMiddleware: MiddlewareFC<any, any>[] = [],
-	) {
-		super(undefined, middlewares);
+	constructor(public readonly router: Router, public readonly type: RouterMethods, public readonly path: string) {
+		super(undefined, router);
 	}
 
 	/**
@@ -108,7 +56,8 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 	 * @returns {RequestHandler<Rq & Req, Rs & Res>} Uma nova instância de `RequestHandler` para permitir mais encadeamento.
 	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Rq & Req, Rs & Res>): RequestHandler<Rq & Req, Rs & Res> {
-		return new RequestHandler(this.router, this.type, this.path, [...this.middlewares, callback], this.hierarchicalMiddleware);
+		this.middlewares.push(callback);
+		return this;
 	}
 
 	/**
@@ -118,18 +67,21 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 	 *
 	 * @template Req - Tipos de requisição adicionais inferidos a partir do handler.
 	 * @template Res - Tipos de resposta adicionais inferidos a partir do handler.
-	 * @param {HandlerFC<Rq & Req, Rs & Res> | PreparedHandler<Rq & Req, Rs & Res>} callback - A função que processará a requisição. Pode ser uma função de handler (`HandlerFC`) ou uma instância de `PreparedHandler` que já encapsula um handler e seus próprios middlewares.
+	 * @param {HandlerFC<Rq & Req, Rs & Res>} callback - A função que processará a requisição. Pode ser uma função de handler (`HandlerFC`).
 	 * @returns {RouterProps} Uma instância que permite adicionar metadados, como documentação Swagger, à rota.
 	 */
 	handler<Req extends Request = Request, Res extends Response = Response>(callback: HandlerFC<Rq & Req, Rs & Res>): RouterProps {
-		if (callback instanceof PreparedHandler) {
-			const handler = createDynamicMiddleware(callback.callback as any);
-			this.router[this.type](this.path, ...this.middlewares.map(createDynamicMiddleware), ...callback.middlewares.map(createDynamicMiddleware), handler as any);
-			return new RouterProps(this.type, [...this.middlewares, ...callback.middlewares], handler, this.hierarchicalMiddleware);
-		}
+		const route = this.router.layers[this.type](this.path, [...this.middlewares, callback].map(createDynamicMiddleware));
 
-		const handler = createDynamicMiddleware(callback);
-		this.router[this.type](this.path, ...this.middlewares.map(createDynamicMiddleware), handler as any);
-		return new RouterProps(this.type, [...this.middlewares], handler, this.hierarchicalMiddleware);
+		return {
+			type: this.type,
+			path: this.path,
+			middlewares: this.middlewares,
+			handler: callback,
+			doc(operation: swaggerJSDoc.Operation, components: swaggerJSDoc.Components = {}) {
+				route.doc = joinDocs(route.doc, { ...operation, components });
+				return this;
+			},
+		};
 	}
 }

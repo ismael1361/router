@@ -1,21 +1,5 @@
 import { HandlerFC, ILayer, IRoute, MiddlewareFC, MiddlewareFCDoc, RouterMethods } from "./type";
-import { joinObject } from "./utils";
-
-const joinPath = (...paths: string[]) => {
-	return ["", ...paths.map((p) => p.replace(/(^\/+)|(\/+$)/gi, "")).filter((p) => p.trim() !== "")].join("/");
-};
-
-const getDocHandles = (...handles: (HandlerFC<any, any> | MiddlewareFC<any, any>)[]) => {
-	return (handles.map((handle) => handle.doc).filter((doc) => doc !== undefined) as MiddlewareFCDoc[]).filter((d) => Object.keys(d).length > 0);
-};
-
-const joinDocs = (...docs: MiddlewareFCDoc[]) => {
-	return docs
-		.filter((d) => Object.keys(d).length > 0)
-		.reduce((previous, current) => {
-			return joinObject(previous, current);
-		}, {} as MiddlewareFCDoc);
-};
+import { getDocHandles, joinDocs, joinPath } from "./utils";
 
 export class Layer extends Array<ILayer> {
 	constructor(public path: string = "", public doc: MiddlewareFCDoc = {}) {

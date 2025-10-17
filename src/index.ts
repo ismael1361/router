@@ -1,9 +1,10 @@
 import type { Request, Response, MiddlewareFC, ExpressRouter, ExpressApp, MiddlewareFCDoc } from "./type";
 import { Router } from "./router";
-import Express from "express";
 import { uuidv4 } from "@ismael1361/utils";
 
 export type * from "./type";
+
+export * as Middlewares from "./Middlewares";
 
 /**
  * Cria uma nova instância da classe `Router`, que oferece uma API fluente para a construção de rotas em Express.
@@ -42,14 +43,8 @@ export type * from "./type";
  *
  * mainRouter.get("/status", (req, res) => res.send("API está online"));
  */
-export function create<Req extends Request = Request, Res extends Response = Response>(app?: ExpressApp | ExpressRouter): Router<Req, Res> {
-	if (app instanceof Express.Router) return new Router<Req, Res>([], app);
-	if (app && "use" in app) {
-		const router = Express.Router();
-		app.use(router);
-		return new Router<Req, Res>([], router);
-	}
-	return new Router<Req, Res>([], Express.Router());
+export function create<Req extends Request = Request, Res extends Response = Response>(): Router<Req, Res> {
+	return new Router<Req, Res>();
 }
 
 /**

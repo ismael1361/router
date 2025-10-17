@@ -1,6 +1,5 @@
-import type { Request, Response, ExpressRouter, MiddlewareFC } from "./type";
+import type { Request, Response, MiddlewareFC } from "./type";
 import { Router } from "./router";
-import Express from "express";
 import { createDynamicMiddleware } from "./utils";
 
 /**
@@ -12,16 +11,12 @@ import { createDynamicMiddleware } from "./utils";
  * @template Rs O tipo de resposta acumulado na cadeia de middlewares.
  */
 export class RequestMiddleware<Rq extends Request = Request, Rs extends Response = Response> {
-	/** A lista de middlewares acumulados. */
-	public middlewares: MiddlewareFC<any, any>[];
-
 	/**
 	 * @param {MiddlewareFC<Rq, Rs>} [callback] - O middleware inicial para adicionar à cadeia.
 	 * @param {MiddlewareFC<any, any>[]} [middlewares=[]] - Uma lista de middlewares pré-existentes para iniciar a cadeia.
 	 */
-	constructor(callback: MiddlewareFC<Rq, Rs> | undefined, middlewares: MiddlewareFC<any, any>[] = [], readonly router: ExpressRouter = Express.Router()) {
-		this.middlewares = [...middlewares];
-		if (callback) this.middlewares.push(callback);
+	constructor(callback: MiddlewareFC<Rq, Rs> | undefined, readonly router: Router = new Router()) {
+		if (callback) this.router.middleware(createDynamicMiddleware(callback));
 	}
 
 	/**
@@ -33,8 +28,8 @@ export class RequestMiddleware<Rq extends Request = Request, Rs extends Response
 	 * @returns {RequestMiddleware<Rq & Req, Rs & Res>} Uma nova instância de `RequestMiddleware` com a cadeia estendida.
 	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Rq & Req, Rs & Res>): RequestMiddleware<Rq & Req, Rs & Res> {
-		this.router.use(([callback] as any).map(createDynamicMiddleware));
-		return new RequestMiddleware(undefined, [...this.middlewares, callback], this.router);
+		this.router.middleware(createDynamicMiddleware(callback));
+		return this;
 	}
 }
 
@@ -116,8 +111,8 @@ export class MiddlewareRouter<Rq extends Request = Request, Rs extends Response 
 	 * @returns {MiddlewareRouter<Rq & Req, Rs & Res>} Uma nova instância de `MiddlewareRouter` com a cadeia estendida.
 	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Rq & Req, Rs & Res>): MiddlewareRouter<Rq & Req, Rs & Res> {
-		this.router.use(([callback] as any).map(createDynamicMiddleware));
-		return new MiddlewareRouter(undefined, [...this.middlewares, callback], this.router);
+		this.router.middleware(createDynamicMiddleware(callback));
+		return this;
 	}
 
 	/**
@@ -132,7 +127,7 @@ export class MiddlewareRouter<Rq extends Request = Request, Rs extends Response 
 	 * @see MiddlewareRouter para um exemplo de uso completo.
 	 */
 	route(path: string): Router<Rq, Rs> {
-		return new Router([...this.middlewares], this.router).route(path);
+		return this.router.route(path);
 	}
 
 	/**
@@ -146,7 +141,7 @@ export class MiddlewareRouter<Rq extends Request = Request, Rs extends Response 
 	 * sendo montado com `.by()`. Ele é útil para anexar roteadores que
 	 * não devem compartilhar o mesmo contexto de middleware (por exemplo, rotas públicas).
 	 *
-	 * @param {Router | ExpressRouter} router - A instância do roteador a ser montada.
+	 * @param {Router} router - A instância do roteador a ser montada.
 	 * @returns {this} A instância atual de `MiddlewareRouter`, permitindo o encadeamento de chamadas.
 	 *
 	 * @example
@@ -166,8 +161,8 @@ export class MiddlewareRouter<Rq extends Request = Request, Rs extends Response 
 	 * // Monta o roteador público usando .by()
 	 * api.by(statusRouter);
 	 */
-	by(router: Router | ExpressRouter): this {
-		new Router([...this.middlewares], this.router).by(router);
+	by(router: Router): this {
+		this.router.by(router);
 		return this;
 	}
 }

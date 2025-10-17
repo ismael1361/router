@@ -1,8 +1,9 @@
 import swaggerJSDoc from "swagger-jsdoc";
-import type { ExpressRequest, MiddlewareFC, ExpressRouter, NextFunction, Response, Request } from "./type";
+import type { ExpressRequest, MiddlewareFC, ExpressRouter, NextFunction, Response, Request, HandlerFC, MiddlewareFCDoc } from "./type";
 import { HandleError } from "./HandleError";
 import fs from "fs";
 import { deepEqual } from "@ismael1361/utils";
+import { Layer } from "./Layer";
 
 export const isConstructedObject = (value: any): boolean => {
 	return typeof value === "object" && value !== null && value.constructor !== Object;
@@ -109,6 +110,22 @@ export const normalizePath = (path: string) => {
 		.join("/");
 };
 
+export const joinPath = (...paths: string[]) => {
+	return ["", ...paths.map((p) => p.replace(/(^\/+)|(\/+$)/gi, "")).filter((p) => p.trim() !== "")].join("/");
+};
+
+export const getDocHandles = (...handles: (HandlerFC<any, any> | MiddlewareFC<any, any>)[]) => {
+	return (handles.map((handle) => handle.doc).filter((doc) => doc !== undefined) as MiddlewareFCDoc[]).filter((d) => Object.keys(d).length > 0);
+};
+
+export const joinDocs = (...docs: MiddlewareFCDoc[]) => {
+	return docs
+		.filter((d) => Object.keys(d).length > 0)
+		.reduce((previous, current) => {
+			return joinObject(previous, current);
+		}, {} as MiddlewareFCDoc);
+};
+
 /**
  * Percorre recursivamente um roteador Express para extrair uma lista de todas as rotas e middlewares.
  * A função identifica rotas, sub-roteadores e middlewares, normalizando seus caminhos e
@@ -139,38 +156,25 @@ export const normalizePath = (path: string) => {
  * //   { path: '/users/{id}/', methods: ['GET'], type: 'ROUTE', swagger: { ... } }
  * // ]
  */
-export const getRoutes = (router: ExpressRouter, basePath: string = "") => {
+export const getRoutes = (router: Layer, basePath: string = "") => {
 	try {
 		let routes: Array<{
 			path: string;
 			methods: string[];
 			type: "ROUTE" | "MIDDLEWARE";
 			swagger?: Pick<swaggerJSDoc.OAS3Definition, "paths" | "components">;
-		}> = [];
+		}> = router.routes.map((layer) => {
+			const { path, method, doc } = layer;
 
-		router.stack.forEach(function (layer) {
-			if (layer.route) {
-				const path = normalizePath(basePath + layer.route.path);
-				const methods = Object.keys((layer.route as any).methods)
-					.filter((method) => method !== "_all")
-					.map((method) => method.toUpperCase());
-
-				const { handle } = layer.route.stack.find(({ handle }) => typeof (handle as any).swagger === "function") ?? {};
-
-				routes.push({ path, methods, type: "ROUTE", swagger: (handle as any)?.swagger(path) });
-			} else if (layer.handle) {
-				if (layer.name === "router") {
-					const routerPath = normalizePath(basePath + (layer.path || regexpToPath(layer.regexp) || ""));
-					const nestedRoutes = getRoutes(layer.handle as any, routerPath);
-					routes.push(...nestedRoutes);
-				} else {
-					routes.push({
-						path: normalizePath(basePath + (layer.path || regexpToPath(layer?.regexp) || "")),
-						methods: ["ALL"], // Middlewares respondem a todos os métodos
-						type: "MIDDLEWARE",
-					});
-				}
-			}
+			return {
+				path,
+				methods: [method],
+				type: "ROUTE",
+				swagger: {
+					paths: { [path]: { [method]: doc?.operation || {} } },
+					components: doc?.components || {},
+				},
+			};
 		});
 
 		return routes;

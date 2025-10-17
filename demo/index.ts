@@ -1,11 +1,10 @@
-import { middleware, create, route, Request } from "../src";
-import express from "express";
+import { middleware, create, route, Middlewares, Request } from "../src";
 import { Layer } from "../src/Layer";
 
-// const app = express();
-// const port = 8080;
+const app = create();
+const port = 8080;
 
-// app.enable("trust proxy");
+app.enable("trust proxy");
 
 // interface AuthRequest extends Request<"userId" | "id", any> {
 // 	body: { user?: { id: string; roles: string[] } };
@@ -108,9 +107,9 @@ import { Layer } from "../src/Layer";
 
 // app.use(userRouter.router);
 
-// app.listen(port, () => {
-// 	console.log(`Example app listening on port ${port}`);
-// });
+app.listen(port, () => {
+	console.log(`Example app listening on port ${port}`);
+});
 
 const testeRoute = new Layer();
 
@@ -119,7 +118,7 @@ testeRoute.middleware(
 		(req, res, next) => {
 			next();
 		},
-		express.json(),
+		Middlewares.json(),
 	],
 	{
 		security: [{ BearerAuth: [] }],
