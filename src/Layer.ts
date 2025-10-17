@@ -7,11 +7,12 @@ export class Layer extends Array<ILayer> {
 	}
 
 	pushPath(type: "layer" | "middleware", method: RouterMethods, path: string, handle: Array<HandlerFC | MiddlewareFC> | Layer, doc?: MiddlewareFCDoc): this {
-		const index = this.push({ path, method, type, handle: handle instanceof Layer ? undefined : handle, doc, route: handle instanceof Layer ? handle : undefined } as any);
+		const index = this.length;
+		this.push({ path, method, type, handle: handle instanceof Layer ? undefined : handle, doc, route: handle instanceof Layer ? handle : undefined } as any);
 		return {
 			...this,
 			get doc(): MiddlewareFCDoc {
-				return this[index].doc || {};
+				return this[index]?.doc || {};
 			},
 			set doc(doc: MiddlewareFCDoc | undefined) {
 				this[index].doc = doc;

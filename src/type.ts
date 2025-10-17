@@ -191,3 +191,8 @@ export interface RouterProps<Req extends Request = any, Res extends Response = a
 	handler: HandlerFC<Req, Res>;
 	doc(operation: swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): RouterProps;
 }
+
+export interface SwaggerOptions extends swaggerJSDoc.OAS3Definition {
+	path?: string;
+	defaultResponses?: swaggerJSDoc.Responses;
+}

@@ -126,6 +126,10 @@ export const joinDocs = (...docs: MiddlewareFCDoc[]) => {
 		}, {} as MiddlewareFCDoc);
 };
 
+export const omit = <T extends object, K extends keyof T>(obj: T, ...keys: K[]): Omit<T, K> => {
+	return Object.fromEntries(Object.entries(obj).filter(([key]) => !keys.includes(key as K))) as Omit<T, K>;
+};
+
 /**
  * Percorre recursivamente um roteador Express para extrair uma lista de todas as rotas e middlewares.
  * A função identifica rotas, sub-roteadores e middlewares, normalizando seus caminhos e

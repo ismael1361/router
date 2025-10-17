@@ -159,6 +159,5 @@ export function middleware<Req extends Request = Request, Res extends Response =
  * app.listen(3000, () => console.log("Servidor rodando."));
  */
 export function route<Req extends Request = Request, Res extends Response = Response>(path: string): Router<Req, Res> {
-	const router = new Router<Req, Res>();
-	return router.route(path);
+	return new Router<Req, Res>(path);
 }
