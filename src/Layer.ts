@@ -6,9 +6,18 @@ export class Layer extends Array<ILayer> {
 		super();
 	}
 
-	pushPath(type: "layer" | "middleware", method: RouterMethods, path: string, handle: Array<HandlerFC | MiddlewareFC> | Layer, doc?: MiddlewareFCDoc): this {
+	pushPath(type: "layer" | "middleware", method: RouterMethods, path: string, handle: Array<HandlerFC | MiddlewareFC> | Layer, doc: MiddlewareFCDoc = {}): this {
 		const index = this.length;
-		this.push({ path, method, type, handle: handle instanceof Layer ? undefined : handle, doc, route: handle instanceof Layer ? handle : undefined } as any);
+
+		this.push({
+			path,
+			method,
+			type,
+			handle: handle instanceof Layer ? undefined : handle,
+			doc: joinDocs(this.doc, handle instanceof Layer ? handle.doc : getDocHandles(...handle), doc),
+			route: handle instanceof Layer ? handle : undefined,
+		} as any);
+
 		return {
 			...this,
 			get doc(): MiddlewareFCDoc {

@@ -1,5 +1,5 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import type { MiddlewareCallback, Request, Response, SwaggerOptions } from "./type";
+import type { MiddlewareCallback, MiddlewareFCDoc, Request, Response, SwaggerOptions } from "./type";
 import { RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
@@ -141,14 +141,14 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 *   res.json({ message: `Bem-vindo, ${req.user.name}!` });
 	 * });
 	 */
-	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>): Router<Rq & Req, Rs & Res> {
+	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): Router<Rq & Req, Rs & Res> {
 		if (callback instanceof RequestMiddleware) {
 			callback.router.layers
 				.filter(({ type, handle }) => type === "middleware" && !!handle)
 				.map(({ handle }) => handle!)
-				.forEach((handle) => this.layers.middleware(handle));
+				.forEach((handle) => this.layers.middleware(handle, doc));
 		} else {
-			this.layers.middleware([callback].map(createDynamicMiddleware));
+			this.layers.middleware([callback].map(createDynamicMiddleware), doc);
 		}
 		return this;
 	}
