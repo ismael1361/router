@@ -1,5 +1,5 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import { MiddlewareFC, Request, Response, SwaggerOptions } from "./type";
+import type { MiddlewareCallback, Request, Response, SwaggerOptions } from "./type";
 import { RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
@@ -7,6 +7,7 @@ import * as http from "http";
 import express, { Express } from "express";
 import swaggerUi from "swagger-ui-express";
 import * as redocUi from "./redocUi";
+import { RequestMiddleware } from "./middleware";
 
 /**
  * A classe `Router` é um wrapper em torno do roteador do Express, oferecendo uma API fluente
@@ -140,8 +141,15 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 *   res.json({ message: `Bem-vindo, ${req.user.name}!` });
 	 * });
 	 */
-	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareFC<Rq & Req, Rs & Res>): Router<Rq & Req, Rs & Res> {
-		this.layers.middleware([callback].map(createDynamicMiddleware));
+	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>): Router<Rq & Req, Rs & Res> {
+		if (callback instanceof RequestMiddleware) {
+			callback.router.layers
+				.filter(({ type, handle }) => type === "middleware" && !!handle)
+				.map(({ handle }) => handle!)
+				.forEach((handle) => this.layers.middleware(handle));
+		} else {
+			this.layers.middleware([callback].map(createDynamicMiddleware));
+		}
 		return this;
 	}
 

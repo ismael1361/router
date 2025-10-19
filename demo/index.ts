@@ -6,6 +6,8 @@ const port = 8080;
 
 app.enable("trust proxy");
 
+app.middleware(Middlewares.json());
+
 interface AuthRequest extends Request<"userId" | "id", any> {
 	body: { user?: { id: string; roles: string[] } };
 	user: { id: string; roles: string[] };
@@ -87,7 +89,7 @@ v1_router.post("/users").handler((req, res) => res.json({ users: [] }));
 
 userRouter.by(v1_router);
 
-userRouter.get("/routes").handler((req, res) => res.json(userRouter.layers.routes));
+userRouter.get("/routes").handler((req, res) => res.json(app.layers.routes));
 
 app.by(userRouter);
 
