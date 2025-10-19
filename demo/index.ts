@@ -1,4 +1,4 @@
-import { middleware, create, route, Middlewares, Request } from "../src";
+import { middleware, create, route, Middlewares, Request, doc } from "../src";
 import { Layer } from "../src/Layer";
 
 const app = create();
@@ -46,17 +46,18 @@ export const fileMiddleware = middleware<FileRequest>((req, res, next) => {
 // 3. Use o middleware em uma rota.
 const userRouter = create().middleware(authMiddleware);
 
-userRouter
-	.get("/profile")
-	.middleware(authMiddleware) // Aplica o middleware à rota
+const getProfile = middleware(authMiddleware) // Aplica o middleware à rota
 	.middleware(fileMiddleware) // Aplica o middleware à rota
 	.handler((req, res) => {
 		// 'req.user' está disponível e fortemente tipado aqui.
 		res.json({ profile: req.user });
-	})
-	.doc({
-		summary: "Get user profile",
 	});
+
+const getProfileDoc = doc({
+	summary: "Get user profile",
+});
+
+userRouter.get("/profile", getProfileDoc).handler(getProfile);
 
 userRouter
 	.post("/profile")

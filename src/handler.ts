@@ -8,7 +8,7 @@ import { uuidv4 } from "@ismael1361/utils";
 export class RequestHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestMiddleware<Rq, Rs> {
 	readonly middlewares: MiddlewareFC<any, any>[] = [];
 
-	constructor(public readonly router: Router, public readonly type: RouterMethods, public readonly path: string) {
+	constructor(public readonly router: Router, public readonly type: RouterMethods, public readonly path: string, public doc?: MiddlewareFCDoc) {
 		super(undefined, router);
 	}
 
@@ -34,7 +34,7 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 			this.middlewares.push(createDynamicMiddleware(callback));
 		}
 
-		const route = this.router.layers[this.type](this.path, this.middlewares);
+		const route = this.router.layers[this.type](this.path, this.middlewares, this.doc);
 
 		return {
 			type: this.type,
@@ -55,7 +55,9 @@ export class Handler<Rq extends Request = Request, Rs extends Response = Respons
 	constructor(callback: HandlerCallback<Rq, Rs> | undefined, readonly router: Router = new Router(), public doc?: MiddlewareFCDoc) {
 		if (callback) {
 			if (callback instanceof Handler) {
-				this.router.by(callback.router);
+				callback.router.layers.forEach((l) => {
+					this.router.layers.push(l);
+				});
 			} else {
 				callback.id = callback.id || uuidv4("-");
 				callback.doc = joinDocs(callback?.doc || {}, doc || {});

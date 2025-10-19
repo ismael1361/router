@@ -158,8 +158,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	get(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "get", path);
+	get(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "get", path, doc);
 	}
 
 	/**
@@ -167,8 +167,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	post(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "post", path);
+	post(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "post", path, doc);
 	}
 
 	/**
@@ -176,8 +176,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	put(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "put", path);
+	put(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "put", path, doc);
 	}
 
 	/**
@@ -185,8 +185,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	delete(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "delete", path);
+	delete(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "delete", path, doc);
 	}
 
 	/**
@@ -194,8 +194,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	patch(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "patch", path);
+	patch(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "patch", path, doc);
 	}
 
 	/**
@@ -203,8 +203,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	options(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "options", path);
+	options(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "options", path, doc);
 	}
 
 	/**
@@ -212,8 +212,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	head(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "head", path);
+	head(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "head", path, doc);
 	}
 
 	/**
@@ -221,8 +221,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	all(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "all", path);
+	all(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "all", path, doc);
 	}
 
 	/**
@@ -230,8 +230,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path O caminho da rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	use(path: string): RequestHandler<Rq, Rs> {
-		return new RequestHandler(this, "use", path);
+	use(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+		return new RequestHandler(this, "use", path, doc);
 	}
 
 	/**

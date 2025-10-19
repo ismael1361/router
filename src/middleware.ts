@@ -8,7 +8,9 @@ export class RequestMiddleware<Rq extends Request = Request, Rs extends Response
 	constructor(callback: MiddlewareCallback<Rq, Rs> | undefined, readonly router: Router = new Router(), doc?: MiddlewareFCDoc) {
 		if (callback) {
 			if (callback instanceof RequestMiddleware) {
-				this.router.by(callback.router);
+				callback.router.layers.forEach((l) => {
+					this.router.layers.push(l);
+				});
 			} else {
 				callback.id = callback.id || uuidv4("-");
 				callback.doc = joinDocs(callback?.doc || {}, doc || {});
