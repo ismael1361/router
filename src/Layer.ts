@@ -14,7 +14,7 @@ export class Layer extends Array<ILayer> {
 			method,
 			type,
 			handle: handle instanceof Layer ? undefined : handle,
-			doc: joinDocs(this.doc, handle instanceof Layer ? handle.doc : getDocHandles(...handle), doc),
+			doc: joinDocs(this.doc, ...(handle instanceof Layer ? [handle.doc] : getDocHandles(...handle)), doc),
 			route: handle instanceof Layer ? handle : undefined,
 		} as any);
 
