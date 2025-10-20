@@ -109,7 +109,7 @@ export function handler<Req extends Request = Request, Res extends Response = Re
  *
  * mainRouter.by(usersRouter); // Anexa o grupo de rotas ao roteador principal
  */
-export function route<Req extends Request = Request, Res extends Response = Response>(path: string): Router<Req, Res> {
+export function route<Req extends Request = Request, Res extends Response = Response>(path?: string): Router<Req, Res> {
 	return new Router<Req, Res>(path);
 }
 

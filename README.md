@@ -1,964 +1,379 @@
 # @ismael1361/router
 
-Esse módulo foi criado para preparar e centralizar rotas em um Express.js com tipagem encadeada, útil para tipar conteúdo de escobo e propriedades de requisição como `body`, `params` e `query`. Também oferece a geração de documentação OpenAPI/Swagger integrada.
+[![npm version](https://img.shields.io/npm/v/@ismael1361/router.svg)](https://www.npmjs.com/package/@ismael1361/router)
+[![License](https://img.shields.io/npm/l/@ismael1361/router.svg)](https://github.com/ismael1361/router/blob/main/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-## Instalação
+Um módulo moderno e robusto para criar e gerenciar rotas em Express.js com tipagem encadeada forte, útil para tipar conteúdo de escopo e propriedades de requisição como `body`, `params` e `query`. Oferece geração automática de documentação OpenAPI/Swagger integrada.
+
+## 📋 Índice
+
+- [Características](#-características)
+- [Instalação](#-instalação)
+- [Início Rápido](#-início-rápido)
+- [API Completa](#-api-completa)
+  - [create](#create)
+  - [middleware](#middleware)
+  - [route](#route)
+  - [Classe Router](#classe-router)
+- [Exemplos Avançados](#-exemplos-avançados)
+- [Documentação OpenAPI/Swagger](#-documentação-openapiswagger)
+- [TypeScript](#-typescript)
+- [Contribuindo](#-contribuindo)
+- [Licença](#-licença)
+
+## ✨ Características
+
+- 🔒 **Tipagem Forte**: Suporte completo a TypeScript com tipos encadeados
+- 📚 **Documentação Automática**: Geração de documentação OpenAPI/Swagger integrada
+- 🔗 **API Fluente**: Interface encadeável e intuitiva para definição de rotas
+- 🛡️ **Middlewares Documentados**: Middlewares com documentação automática
+- 🎯 **Organização Modular**: Suporte a sub-roteadores e rotas agrupadas
+- ⚡ **Performance**: Construído sobre Express.js, mantendo sua eficiência
+- 🧩 **Extensível**: Fácil de estender com tipos personalizados
+
+## 📦 Instalação
 
 ```bash
 npm install @ismael1361/router
-# ou
+```
+
+ou
+
+```bash
 yarn add @ismael1361/router
 ```
 
----
-
-## Indice
-
-- [@ismael1361/router](#ismael1361router)
-  - [Instalação](#instalação)
-  - [Indice](#indice)
-  - [`create`](#create)
-    - [Parâmetros](#parâmetros)
-    - [Retorno](#retorno)
-    - [Exemplo de Uso](#exemplo-de-uso)
-  - [`middleware`](#middleware)
-    - [Parâmetros](#parâmetros-1)
-    - [Retorno](#retorno-1)
-    - [Exemplo de Uso](#exemplo-de-uso-1)
-  - [`route`](#route)
-    - [Parâmetros](#parâmetros-2)
-    - [Retorno](#retorno-2)
-    - [Exemplo de Uso](#exemplo-de-uso-2)
-  - [`Router`](#router)
-    - [Propriedades da Instância](#propriedades-da-instância)
-      - [`router`](#router-1)
-      - [`routes`](#routes)
-    - [Métodos da Instância](#métodos-da-instância)
-      - [`get`](#get)
-      - [`post`](#post)
-      - [`put`](#put)
-      - [`delete`](#delete)
-      - [`patch`](#patch)
-      - [`options`](#options)
-      - [`head`](#head)
-      - [`all`](#all)
-      - [`use`](#use)
-      - [`route`](#route-1)
-      - [`middleware`](#middleware-1)
-      - [`handler`](#handler)
-      - [`by`](#by)
-      - [`getSwagger`](#getswagger)
-
----
-
-## `create`
+## 🚀 Início Rápido
 
 ```typescript
-create<Req extends Request, Res extends Response>(app?: express.Express | express.Router): Router<Req, Res>;
-```
+import { create, Middlewares } from '@ismael1361/router';
 
-A função `create` é o ponto de partida para a criação de rotas. Ela inicializa uma instância de um roteador aprimorado que pode ser anexado a uma aplicação Express existente ou usado de forma independente.
+const app = create();
 
-Este roteador oferece uma API fluente e fortemente tipada para definir rotas, ao mesmo tempo que integra a geração de documentação OpenAPI (Swagger).
+app.middleware(Middlewares.json());
 
-### Parâmetros
+// Crie o roteador com middleware JSON
+const router = app.route();
 
-- `app` (opcional): Uma instância de uma aplicação `Express` ou `Router` do Express. Se fornecido, o novo roteador será montado diretamente nesta instância.
-
-### Retorno
-
-Retorna uma nova instância do `Router`, que possui métodos encadeáveis (`.get()`, `.post()`, etc.) para a definição de rotas com metadados para a documentação.
-
-### Exemplo de Uso
-
-```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-// 1. (Opcional) Estenda os tipos de Request e Response se precisar de propriedades customizadas
-interface CustomRequest extends Request {
-  user?: { id: string; name: string };
-}
-
-interface CustomResponse extends Response {
-  // ... propriedades customizadas para a resposta
-}
-
-const app = express();
-
-// 2. Crie a instância do roteador, passando a aplicação Express
-const router = create<CustomRequest, CustomResponse>(app).middleware(express.json());
-
-// 3. Defina as rotas usando a API fluente
+// Defina rotas com documentação
 router
   .get('/users/:id')
   .handle((req, res) => {
-    // req.params.id é totalmente tipado aqui
-    res.json({ id: req.params.id, name: 'John Doe' });
-  }).doc({
-    summary: 'Obter um usuário pelo ID',
-    description: 'Retorna os detalhes de um usuário específico.',
+    res.json({ 
+      id: req.params.id, 
+      name: 'John Doe' 
+    });
+  })
+  .doc({
+    summary: 'Obter usuário por ID',
+    description: 'Retorna os detalhes de um usuário específico',
     tags: ['Users'],
     params: {
       id: {
         description: 'ID do usuário',
         type: 'string',
-        required: true,
-      },
+        required: true
+      }
     },
     responses: {
       200: { description: 'Usuário encontrado' },
-      404: { description: 'Usuário não encontrado' },
-    },
+      404: { description: 'Usuário não encontrado' }
+    }
   });
 
-// O roteador já está montado na 'app' e as rotas estão ativas.
 app.listen(3000, () => {
-  console.log('Servidor rodando na porta 3000');
+  console.log('🚀 Servidor rodando na porta 3000');
 });
 ```
 
----
+## 📖 API Completa
 
-## `middleware`
+### create
 
-```ts
+Cria uma nova instância do roteador aprimorado.
+
+```typescript
+create<Req extends Request, Res extends Response>(): Router<Req, Res>
+```
+
+**Retorno:** Nova instância do Router com métodos encadeáveis
+
+**Exemplo:**
+
+```typescript
+import { create, Request, Response } from '@ismael1361/router';
+
+interface CustomRequest extends Request {
+  user?: { id: string; name: string };
+}
+
+const router = create<CustomRequest>()
+  .middleware(express.json());
+```
+
+### middleware
+
+Cria middlewares reutilizáveis com documentação integrada.
+
+```typescript
 middleware<Req extends Request, Res extends Response>(
   callback: MiddlewareFC<Req, Res>,
   doc?: MiddlewareFCDoc
-): MiddlewareFC<Req, Res>;
+): MiddlewareFC<Req, Res>
 ```
 
-A função `middleware` é um wrapper que permite criar middlewares reutilizáveis para o Express, enriquecendo-os com metadados para a documentação OpenAPI (Swagger).
+**Parâmetros:**
+- `callback`: Função de middleware padrão do Express `(req, res, next)`
+- `doc` (opcional): Objeto com metadados para documentação OpenAPI
 
-Ao envolver sua lógica de middleware com esta função, você pode definir como ele deve ser documentado (ex: quais cabeçalhos ele espera, quais respostas de erro ele pode retornar). Quando este middleware é aplicado a uma rota, sua documentação é automaticamente mesclada com a documentação da rota.
+**Retorno:** Função de middleware com metadados de documentação anexados
 
-### Parâmetros
-
-- `callback`: A função de middleware padrão do Express, com a assinatura `(req, res, next)`. É aqui que a lógica do seu middleware (autenticação, logging, etc.) reside.
-- `doc` (opcional): Um objeto que descreve o middleware para a documentação OpenAPI. É útil para documentar requisitos globais como autenticação.
-
-### Retorno
-
-Retorna a própria função de `callback` do middleware, mas com os metadados da documentação anexados a ela. Isso permite que o roteador a utilize tanto como um middleware funcional quanto como uma fonte de documentação.
-
-### Exemplo de Uso
-
-Vamos criar e usar um middleware de autenticação que verifica um token no cabeçalho `Authorization`.
+**Exemplo:**
 
 ```typescript
-import express from 'express';
-import { create, middleware, Request, Response } from '@ismael1361/router';
+import { middleware, Request } from '@ismael1361/router';
 
 interface AuthRequest extends Request {
   user: { id: string; roles: string[] };
 }
 
-// 1. Crie o middleware de autenticação com sua documentação
 const isAuthenticated = middleware<AuthRequest>(
   (req, res, next) => {
     const token = req.headers.authorization;
+    
     if (token === 'Bearer meu-token-secreto') {
       req.user = { id: '123', roles: ['admin', 'user'] };
-      return next(); // Token válido, continue
+      return next();
     }
+    
     res.status(401).json({ message: 'Não autorizado' });
   },
   {
-    // 2. Documente os requisitos e possíveis respostas do middleware
-    security: [{ bearerAuth: [] }], // Indica que a rota requer autenticação Bearer
+    security: [{ bearerAuth: [] }],
     responses: {
-      401: { description: 'Token de autenticação inválido ou não fornecido' },
-    },
+      401: { 
+        description: 'Token de autenticação inválido ou não fornecido' 
+      }
+    }
   }
 );
 
-const app = express();
-const router = create(app);
-
-// 3. Aplique o middleware a uma rota específica
+// Usar o middleware
 router
   .get('/profile')
-  .middleware(isAuthenticated) // O middleware é aplicado aqui
+  .middleware(isAuthenticated)
   .handle((req, res) => {
     res.json({ user: req.user });
-  }).doc({
-    summary: 'Obter perfil do usuário',
-    description: 'Acessa informações do usuário autenticado. Requer um token válido.',
-    tags: ['Users'],
-    responses: {
-      200: { description: 'Perfil do usuário' },
-    },
   });
-
-// A documentação OpenAPI gerada para a rota GET /profile agora incluirá
-// automaticamente as seções 'security' e a resposta '401' definidas no middleware.
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
----
+### route
 
-## `route`
-
-```ts
-route<Req extends Request, Res extends Response>(path: string): Router<Req, Res>;
-```
-
-A função `route` cria uma instância de rota encadeável para um caminho (path) específico. Isso permite agrupar múltiplos métodos HTTP (como GET, POST, PUT, etc.) para o mesmo endpoint de URL, o que é uma prática comum para organizar APIs RESTful.
-
-Ao invés de definir `router.get('/tasks', ...)` e `router.post('/tasks', ...)` separadamente, você pode agrupar ambos sob `router.route('/tasks')`.
-
-### Parâmetros
-
-- `path`: A string do caminho da URL para a qual a rota será criada.
-
-### Retorno
-
-Retorna uma nova instância do `Router` que está "travada" no `path` especificado. Você pode então encadear os métodos HTTP (`.get()`, `.post()`, etc.) diretamente a esta instância.
-
-### Exemplo de Uso
-
-Vamos criar um endpoint `/tasks` que lida com a listagem (GET) e a criação (POST) de tarefas.
+Cria uma instância de rota para agrupar múltiplos métodos HTTP sob o mesmo caminho.
 
 ```typescript
-import express from 'express';
-import { route, Request, Response } from '@ismael1361/router';
+route<Req extends Request, Res extends Response>(
+  path?: string
+): Router<Req, Res>
+```
 
-const app = express();
-const main = create(app).middleware(express.json());
+**Parâmetros:**
+- `path`: Caminho da URL para a rota
 
-// 1. Crie uma rota para o caminho '/tasks'
-const router = route('/tasks');
+**Retorno:** Nova instância do Router "travada" no path especificado
 
-// 2. Defina o handler para o método GET nesta rota
-router
-  .get("/items")
+**Exemplo:**
+
+```typescript
+import { route } from '@ismael1361/router';
+
+const tasksRouter = route('/tasks');
+
+// GET /tasks/items
+tasksRouter
+  .get('/items')
   .handle((req, res) => {
-    res.json([{ id: 1, title: 'Aprender a usar o @ismael1361/router' }]);
-  }).doc({
+    res.json([{ id: 1, title: 'Aprender @ismael1361/router' }]);
+  })
+  .doc({
     summary: 'Listar todas as tarefas',
     tags: ['Tasks'],
-    responses: { 200: { description: 'Lista de tarefas' } },
+    responses: { 200: { description: 'Lista de tarefas' } }
   });
 
-// 3. Defina o handler para o método POST na mesma rota
-router
-  .post("item")
+// POST /tasks/item
+tasksRouter
+  .post('/item')
   .handle((req, res) => {
     const newTask = req.body;
     res.status(201).json({ id: 2, ...newTask });
-  }).doc({
-    summary: 'Criar uma nova tarefa',
+  })
+  .doc({
+    summary: 'Criar nova tarefa',
     tags: ['Tasks'],
     body: { description: 'Dados da nova tarefa' },
-    responses: { 201: { description: 'Tarefa criada com sucesso' } },
+    responses: { 201: { description: 'Tarefa criada' } }
   });
 
-// 4. Adicione a rota ao roteador principal
-main.by(router);
-// ou diretamente ao app
-// app.use(router.router);
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
+// Adicionar ao roteador principal
+mainRouter.by(tasksRouter);
 ```
 
----
+### Classe Router
 
-## `Router`
+A classe principal que encapsula o roteador do Express com API fluente e tipada.
 
-```ts
-Router<Rq extends Request, Rs extends Response>;
-```
+#### Propriedades
 
-A classe `Router` é o principal objeto com o qual você irá interagir. Ela encapsula o roteador do Express, fornecendo uma API encadeável e fortemente tipada para definir rotas, aplicar middlewares e gerar documentação OpenAPI.
-
-Uma instância do `Router` é retornada pela função `create` ou pelo método `.route()`.
-
----
-
-### Propriedades da Instância
-
-#### `router`
-
-```ts
-.router: express.Router;
-```
-
-A instância do roteador do Express. Usada internamente para definir rotas e middlewares.
-
----
-
-#### `routes`
-
-```ts
-.routes: Array<{
-    path: string;
-    methods: string[];
-    type: "ROUTE" | "MIDDLEWARE";
-    swagger?: Pick<swaggerJSDoc.OAS3Definition, "paths" | "components">;
-}>;
-```
-
-Um array que armazena as rotas e middlewares definidos na instância. Essas rotas e middlewares serão usadas para gerar a documentação OpenAPI.
-
----
-
-### Métodos da Instância
-
-#### `get`
-
-```ts
-.get(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a requisições HTTP do método GET. Este método é o ponto de partida para definir um endpoint que recupera dados.
-
-Após chamar `.get()`, você deve encadear o método `.handle()` para fornecer a lógica do controlador e, opcionalmente, o método `.doc()` para adicionar a documentação OpenAPI.
-
-* **Parâmetros**
-  - `path` (string): A string do caminho da URL para a rota. O caminho é relativo ao prefixo do roteador. Pode conter parâmetros de rota, como `/users/:id`.
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler`, que é um objeto intermediário com os seguintes métodos encadeáveis:
-  - `.middleware()`: Para aplicar middlewares específicos a esta rota.
-  - `.handle()`: Para definir a função controladora que processará a requisição.
-  - `.doc()`: Para fornecer metadados de documentação OpenAPI para a rota.
-
-* **Exemplo de Uso**
+##### `.app`
 ```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
+router: express.Express
+```
+Instância do Express subjacente.
 
-const app = express();
-const router = create(app);
+##### `.routes`
+```typescript
+routes: Array<{
+  path: string;
+  methods: string[];
+  type: "ROUTE" | "MIDDLEWARE";
+  swagger?: Pick<swaggerJSDoc.OAS3Definition, "paths" | "components">;
+}>
+```
+Array de rotas e middlewares registrados para geração de documentação.
 
-// Exemplo 1: Rota GET simples
+#### Métodos HTTP
+
+##### `.get(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota GET.
+
+```typescript
 router
   .get('/status')
   .handle((req, res) => {
     res.json({ status: 'ok' });
   })
   .doc({
-    summary: 'Verificar o status da API',
+    summary: 'Verificar status da API',
     tags: ['Health'],
-    responses: {
-      200: { description: 'A API está funcionando corretamente' },
-    },
+    responses: { 200: { description: 'API funcionando' } }
   });
-
-// Exemplo 2: Rota GET com parâmetros
-router
-  .get('/users/:id')
-  .handle((req, res) => {
-    // 'req.params.id' é totalmente tipado como string
-    const userId = req.params.id;
-    // Lógica para buscar o usuário...
-    res.json({ id: userId, name: 'Usuário Exemplo' });
-  })
-  .doc({
-    summary: 'Obter um usuário pelo ID',
-    tags: ['Users'],
-    params: { id: { description: 'ID do usuário', type: 'string', required: true } },
-    responses: { 200: { description: 'Dados do usuário' }, 404: { description: 'Usuário não encontrado' } },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
----
+##### `.post(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota POST.
 
-#### `post`
-
-```ts
-.post(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a requisições HTTP do método POST. Este método é comumente utilizado para **criar novos recursos** no servidor.
-
-Após chamar `.post()`, você deve encadear o método `.handle()` para fornecer a lógica do controlador (que geralmente acessa `req.body`) e, opcionalmente, o método `.doc()` para documentar o corpo da requisição e as possíveis respostas.
-
-* **Parâmetros**
-  - `path` (string): A string do caminho da URL para a rota.
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento dos métodos `.middleware()`, `.handle()` e `.doc()`.
-
-* **Exemplo de Uso**
 ```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-// É essencial usar um middleware para parsear o corpo da requisição JSON
-const router = create(app).middleware(express.json());
-
 router
   .post('/users')
   .handle((req, res) => {
-    // req.body contém os dados enviados pelo cliente
     const newUser = req.body;
-    // Lógica para salvar o novo usuário no banco de dados...
-    const createdUser = { id: Date.now().toString(), ...newUser };
-    res.status(201).json(createdUser);
+    res.status(201).json({ id: Date.now(), ...newUser });
   })
   .doc({
-    summary: 'Criar um novo usuário',
+    summary: 'Criar novo usuário',
     tags: ['Users'],
     body: {
-      description: 'Dados do novo usuário a ser criado.',
-      required: true,
-      // Você pode fornecer um schema para o corpo da requisição
+      description: 'Dados do usuário',
       schema: {
         type: 'object',
         properties: {
-          name: { type: 'string', example: 'Jane Doe' },
-          email: { type: 'string', example: 'jane.doe@example.com' },
-        },
-        required: ['name', 'email'],
-      },
+          name: { type: 'string' },
+          email: { type: 'string' }
+        }
+      }
     },
-    responses: {
-      201: { description: 'Usuário criado com sucesso' },
-      400: { description: 'Dados inválidos fornecidos' },
-    },
+    responses: { 201: { description: 'Usuário criado' } }
   });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
----
+##### `.put(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota PUT para substituição completa de recursos.
 
-#### `put`
+##### `.patch(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota PATCH para atualizações parciais.
 
-```ts
-.put(path: string): RequestHandler<Rq, Rs>;
-```
+##### `.delete(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota DELETE para remoção de recursos.
 
-Registra uma rota que responde a requisições HTTP do método PUT. Este método é usado para **substituir completamente um recurso existente** com os novos dados fornecidos no corpo da requisição.
+##### `.options(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota OPTIONS para requisições de pré-voo CORS.
 
-* **Parâmetros**
-  - `path` (string): O caminho da URL, geralmente contendo um parâmetro para identificar o recurso a ser atualizado (ex: `/users/:id`).
+##### `.head(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota HEAD para obter metadados sem corpo de resposta.
 
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento.
+##### `.all(path: string, doc?: MiddlewareFCDoc)`
+Registra uma rota que responde a todos os métodos HTTP.
 
-* **Exemplo de Uso**
+#### Métodos de Configuração
+
+##### `.use(path: string, doc?: MiddlewareFCDoc)`
+Monta middlewares em um caminho específico.
+
 ```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const router = create(app).middleware(express.json());
-
-router
-  .put('/users/:id')
-  .handle((req, res) => {
-    const { id } = req.params;
-    const updatedData = req.body;
-    // Lógica para substituir o usuário com o ID fornecido...
-    res.json({ id, ...updatedData });
-  })
-  .doc({
-    summary: 'Atualizar um usuário (substituição completa)',
-    tags: ['Users'],
-    params: { id: { description: 'ID do usuário a ser atualizado', type: 'string', required: true } },
-    body: { description: 'Dados completos do usuário para substituição.' },
-    responses: {
-      200: { description: 'Usuário atualizado com sucesso' },
-      404: { description: 'Usuário não encontrado' },
-    },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `delete`
-
-```ts
-.delete(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a requisições HTTP do método DELETE. Este método é utilizado para **remover um recurso específico**.
-
-* **Parâmetros**
-  - `path` (string): O caminho da URL, que deve conter um parâmetro para identificar o recurso a ser removido (ex: `/items/:id`).
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const router = create(app);
-
-router
-  .delete('/items/:id')
-  .handle((req, res) => {
-    const { id } = req.params;
-    // Lógica para deletar o item do banco de dados...
-    console.log(`Item ${id} deletado.`);
-    // Uma boa prática é retornar 204 (No Content) em caso de sucesso.
-    res.status(204).send();
-  })
-  .doc({
-    summary: 'Deletar um item',
-    tags: ['Items'],
-    params: { id: { description: 'ID do item a ser deletado', type: 'string', required: true } },
-    responses: {
-      204: { description: 'Item deletado com sucesso' },
-      404: { description: 'Item não encontrado' },
-    },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `patch`
-
-```ts
-.patch(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a requisições HTTP do método PATCH. É usado para aplicar **atualizações parciais** a um recurso, modificando apenas os campos enviados no corpo da requisição.
-
-* **Parâmetros**
-  - `path` (string): O caminho da URL, geralmente com um parâmetro para identificar o recurso (ex: `/tasks/:id`).
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const router = create(app).middleware(express.json());
-
-router
-  .patch('/tasks/:id')
-  .handle((req, res) => {
-    const { id } = req.params;
-    const partialUpdates = req.body; // ex: { "completed": true }
-    // Lógica para aplicar a atualização parcial na tarefa...
-    res.json({ id, message: 'Tarefa atualizada parcialmente.', changes: partialUpdates });
-  })
-  .doc({
-    summary: 'Atualizar uma tarefa (parcialmente)',
-    tags: ['Tasks'],
-    params: { id: { description: 'ID da tarefa', type: 'string', required: true } },
-    body: { description: 'Campos da tarefa a serem atualizados.' },
-    responses: {
-      200: { description: 'Tarefa atualizada' },
-      404: { description: 'Tarefa não encontrada' },
-    },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `options`
-
-```ts
-.options(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a requisições HTTP do método OPTIONS. Este método é usado pelo navegador para determinar as opções de comunicação para um recurso de destino, principalmente em requisições de **pré-voo (pre-flight) do CORS**.
-
-* **Parâmetros**
-  - `path` (string): O caminho da URL do recurso.
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const router = create(app);
-
-// Para um recurso específico, informa quais métodos são permitidos
-router
-  .options('/articles/:id')
-  .handle((req, res) => {
-    res.header('Access-Control-Allow-Methods', 'GET, PUT, DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.status(204).send();
-  })
-  .doc({
-    summary: 'Verificar opções de comunicação para um artigo',
-    tags: ['Articles'],
-    responses: {
-      204: { description: 'Sucesso. Os métodos permitidos estão nos cabeçalhos de resposta.' },
-    },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `head`
-
-```ts
-.head(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a requisições HTTP do método HEAD. É idêntico ao GET, mas o servidor **não envia o corpo da resposta**. É útil para verificar metadados de um recurso, como `Content-Length` ou `Last-Modified`, sem precisar baixar o conteúdo completo.
-
-* **Parâmetros**
-  - `path` (string): O caminho da URL do recurso.
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const router = create(app);
-
-// O Express lida com HEAD automaticamente se você tiver uma rota GET correspondente.
-// No entanto, você pode definir um handler específico se precisar de lógica customizada.
-router
-  .head('/large-file.zip')
-  .handle((req, res) => {
-    // Lógica para obter o tamanho do arquivo sem lê-lo
-    const fileSize = 104857600; // 100 MB
-    res.header('Content-Length', fileSize.toString());
-    res.status(200).send(); // O corpo é omitido pelo Express
-  })
-  .doc({
-    summary: 'Obter metadados de um arquivo',
-    tags: ['Files'],
-    responses: {
-      200: { description: 'Metadados do arquivo nos cabeçalhos.' },
-      404: { description: 'Arquivo não encontrado.' },
-    },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `all`
-
-```ts
-.all(path: string): RequestHandler<Rq, Rs>;
-```
-
-Registra uma rota que responde a **todos os métodos HTTP** (GET, POST, PUT, etc.) para um caminho específico. É útil para aplicar lógica genérica a um endpoint, como logging ou validações que independem do método.
-
-* **Parâmetros**
-  - `path` (string): O caminho da URL.
-
-* **Retorno**
-    Retorna uma instância de `RequestHandler` para encadeamento.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const router = create(app);
-
-router
-  .all('/secret-data')
-  .handle((req, res) => {
-    // Este handler será executado para GET, POST, DELETE, etc. em '/secret-data'
-    console.log(`Requisição ${req.method} recebida em /secret-data`);
-    res.status(403).send('Acesso negado a este endpoint.');
-  })
-  .doc({
-    summary: 'Endpoint genérico de captura',
-    tags: ['Utils'],
-    description: 'Este endpoint responde a todos os métodos HTTP com uma mensagem padrão.',
-    responses: {
-      403: { description: 'Acesso sempre negado.' },
-    },
-  });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `use`
-
-```ts
-.use(path: string): Router<Rq, Rs>;
-```
-
-Monta uma função de middleware ou uma série de middlewares em um caminho específico. Diferente dos métodos de rota (GET, POST, etc.), `use` é projetado para interceptar requisições e executar código **antes** que elas cheguem ao handler final da rota.
-
-É ideal para tarefas como logging, parsing de corpo de requisição, autenticação e tratamento de erros. Se nenhum caminho for especificado, o middleware será aplicado a todas as rotas definidas no roteador.
-
-* **Parâmetros**
-  - `path` (opcional): O caminho no qual o middleware será aplicado. Suporta wildcards (ex: `/api/*`).
-
-* **Retorno**
-    Retorna a própria instância do `Router`, permitindo o encadeamento de mais definições.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, Request, Response, NextFunction } from '@ismael1361/router';
-
-const app = express();
-const router = create(app);
-
-// Aplica o middleware no caminho /api
 router.use('/api').handle((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  next(); // Passa o controle para o próximo middleware ou handler
+  next();
 });
-
-// Define uma rota dentro do escopo do middleware
-router
-  .get('/api/status')
-  .handle((req, res) => {
-    res.json({ status: 'ok' });
-  });
-
-// Uma requisição para GET /api/status irá primeiro executar o loggerMiddleware.
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
----
+##### `.route(path: string)`
+Cria um sub-roteador com prefixo.
 
-#### `route`
-
-```ts
-.route(path: string): Router<Rq, Rs>;
-```
-
-Cria e retorna uma nova instância de `Router` que é montada sob um caminho (prefixo) específico. É uma maneira poderosa de agrupar um conjunto de rotas relacionadas sob um namespace comum, promovendo a organização e a modularidade do código.
-
-Todas as rotas definidas no roteador retornado serão relativas ao `path` fornecido.
-
-* **Parâmetros**
-  - `path` (string): O caminho do prefixo para o novo roteador. Por exemplo, `/api/v1`.
-
-* **Retorno**
-    Retorna uma nova instância de `Router` que pode ser usada para definir um grupo de rotas.
-
-* **Exemplo de Uso**
 ```typescript
-import express from 'express';
-import { create, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const mainRouter = create(app);
-
-// 1. Crie um sub-roteador para os endpoints de usuários
 const usersRouter = mainRouter.route('/users');
 
-// 2. Defina as rotas neste sub-roteador. Os caminhos são relativos a '/users'.
 usersRouter
   .get('/')
   .handle((req, res) => {
-    // Este handler responde a GET /users
     res.json([{ id: '1', name: 'Alice' }]);
-  })
-  .doc({ summary: 'Listar todos os usuários', tags: ['Users'] });
-
-usersRouter
-  .get('/:id')
-  .handle((req, res) => {
-    // Este handler responde a GET /users/:id
-    res.json({ id: req.params.id, name: 'Alice' });
-  })
-  .doc({ summary: 'Obter um usuário pelo ID', tags: ['Users'] });
-
-// O mainRouter já está conectado ao 'app', então as rotas estão ativas.
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
-```
-
----
-
-#### `middleware`
-
-```ts
-.middleware<Req extends Request, Res extends Response>(callback: MiddlewareFC<Req, Res>): Router<Rq & Req, Rs & Res>;
-```
-
-Aplica uma função de middleware a **todas as rotas subsequentes** definidas nesta instância do roteador. É o método ideal para aplicar middlewares que devem ser executados para um grupo de endpoints, como parsing de corpo de requisição (`express.json()`) ou autenticação.
-
-A tipagem do `Request` e `Response` é inteligentemente mesclada, garantindo que as propriedades adicionadas por um middleware (ex: `req.user`) estejam disponíveis e corretamente tipadas nos handlers das rotas.
-
-* **Parâmetros**
-  - `callbacks`: Uma função de middleware do Express.
-
-* **Retorno**
-    Retorna a própria instância do `Router`, com os tipos de `Request` e `Response` atualizados, permitindo o encadeamento contínuo.
-
-* **Exemplo de Uso**
-```typescript
-import express from 'express';
-import { create, middleware, Request, Response, NextFunction } from '@ismael1361/router';
-
-interface AuthRequest extends Request {
-  user?: { id: string };
-}
-
-const app = express();
-
-// Middleware de autenticação simples
-const authMiddleware = middleware<AuthRequest>((req, res, next) => {
-  req.user = { id: 'user-123' };
-  next();
-});
-
-// 1. Crie o roteador e aplique middlewares globais a ele
-const router = create<AuthRequest>(app)
-  .middleware(express.json());
-
-// 2. Todas as rotas definidas a partir daqui terão acesso a `req.body` e `req.user`
-router
-  .get('/profile')
-  .middleware(authMiddleware)
-  .handle((req, res) => {
-    // req.user é totalmente tipado como { id: string }
-    res.json({ profile: req.user });
   });
-
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
----
+##### `.middleware(callback: MiddlewareFC, doc?: MiddlewareFCDoc)`
+Aplica middleware a todas as rotas subsequentes.
 
-#### `handler`
-
-```ts
-.handler<Req extends Request, Res extends Response>(callback: HandlerFC<Req, Res>): PreparedHandler<Rq & Req, Rs & Res>;
-```
-
-Define a função controladora (handler) que processará a requisição para uma rota ou middleware específico. Este método é o coração da sua rota, onde a lógica de negócios é executada.
-
-Ele deve ser encadeado após a definição de um método HTTP (como `.get()`, `.post()`) ou de um middleware (`.use()`). A função de `callback` recebe os objetos `req` e `res`, que são fortemente tipados com base nos middlewares aplicados anteriormente.
-
-* **Parâmetros**
-  - `callback`: A função controladora que processará a requisição, com a assinatura `(req, res, next)`.
-
-* **Retorno**
-    Retorna uma instância de `PreparedHandler`, que permite encadear o método `.doc()` para adicionar a documentação OpenAPI.
-
-* **Exemplo de Uso**
 ```typescript
-import express from 'express';
-import { create, Request, Response, NextFunction } from '@ismael1361/router';
+const router = create(app)
+  .middleware(express.json())
+  .middleware(authMiddleware);
+```
 
-const app = express();
-const router = create(app);
+##### `.handler(callback: HandlerFC, doc?: MiddlewareFCDoc)`
+Define a função controladora para processar requisições.
 
-// Exemplo 1: Handler para uma rota GET
+```typescript
 router
   .get('/status')
   .handler((req, res) => {
     res.json({ status: 'ok' });
   });
-
-// Exemplo 2: Handler para um middleware
-router.use('/api').handler((req, res, next) => {
-  console.log('Requisição recebida na API');
-  next(); // Passa para o próximo handler
-});
-
-app.listen(3000, () => {
-  console.log('Servidor rodando na porta 3000');
-  console.log('Acesse /status ou /health-check');
-});
 ```
 
----
+##### `.by(router: ExpressRouter | Router)`
+Anexa um roteador existente ao atual.
 
-#### `by`
-
-```ts
-.by(router: ExpressRouter | Router<Request, Response>): this;
-```
-
-Anexa um roteador existente (seja uma instância do `Router` desta biblioteca ou um `express.Router` padrão) ao roteador atual. Este método é uma forma conveniente de compor e modularizar sua aplicação, permitindo que você defina grupos de rotas em arquivos separados e depois os integre ao roteador principal.
-
-* **Parâmetros**
-  - `router`: A instância do roteador a ser anexada.
-
-* **Retorno**
-  - Retorna a própria instância do `Router` (`this`), permitindo o encadeamento de mais chamadas.
-
-* **Exemplo de Uso**
 ```typescript
-import express from 'express';
-import { create, route, Request, Response } from '@ismael1361/router';
-
-const app = express();
-const mainRouter = create(app);
-
-// 1. Crie um roteador separado para as rotas de produtos
 const productsRouter = route('/products');
+// ... definir rotas
 
-productsRouter
-  .get('/')
-  .handle((req, res) => {
-    res.json([{ id: 'p1', name: 'Laptop' }]);
-  })
-  .doc({ summary: 'Listar produtos', tags: ['Products'] });
-
-// 2. Use o método .by() para anexar o roteador de produtos ao roteador principal
 mainRouter.by(productsRouter);
-
-// A rota GET /products está agora ativa na aplicação.
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'));
 ```
 
----
+##### `.getSwagger(options?, defaultResponses?)`
+Gera a especificação OpenAPI completa.
 
-#### `getSwagger`
-
-```ts
-.getSwagger(options?: swaggerJSDoc.OAS3Definition, defaultResponses?: swaggerJSDoc.Responses): swaggerJSDoc.Options;
-```
-
-Coleta todas as informações de documentação fornecidas através dos métodos `.doc()` em todas as rotas e as compila em um objeto de opções compatível com a biblioteca `swagger-jsdoc`. Este objeto pode ser usado para gerar a especificação OpenAPI completa (geralmente um arquivo `swagger.json`).
-
-* **Parâmetros**
-  - `options` (opcional): Um objeto de definição base do OpenAPI 3.0. Aqui você define informações globais da sua API, como `info` (título, versão), `servers`, `components` (schemas, securitySchemes), etc.
-  - `defaultResponses` (opcional): Um objeto para definir respostas padrão que serão mescladas em todas as rotas, como `500: { description: 'Erro interno do servidor' }`.
-
-* **Retorno**
-  - Retorna um objeto de opções (`swaggerJSDoc.Options`) que pode ser passado diretamente para a função `swaggerJSDoc()` para gerar a documentação.
-
-* **Exemplo de Uso**
 ```typescript
 import swaggerJSDoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
+// import swaggerUi from 'swagger-ui-express';
 
-// ... (definição do seu app e rotas com .doc())
-
-// 1. Defina as opções base para a sua documentação OpenAPI
-const swaggerDefinition: swaggerJSDoc.OAS3Definition = {
+const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
-    title: 'Minha API Incrível',
+    title: 'Minha API',
     version: '1.0.0',
-    description: 'Documentação da API criada com @ismael1361/router',
+    description: 'API com documentação automática'
   },
   servers: [{ url: 'http://localhost:3000' }],
   components: {
@@ -966,23 +381,346 @@ const swaggerDefinition: swaggerJSDoc.OAS3Definition = {
       bearerAuth: {
         type: 'http',
         scheme: 'bearer',
-        bearerFormat: 'JWT',
-      },
-    },
-  },
+        bearerFormat: 'JWT'
+      }
+    }
+  }
 };
 
-// 2. Gere as opções completas usando o método .getSwagger() do seu roteador
 const swaggerOptions = router.getSwagger(swaggerDefinition);
-
-// 3. Gere a especificação final com swagger-jsdoc
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
-// 4. Sirva a documentação usando swagger-ui-express
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+console.log(swaggerSpec);
+```
+
+## 🎯 Exemplos Avançados
+
+### Autenticação e Autorização
+
+```typescript
+import { create, middleware, Middlewares, Request } from '@ismael1361/router';
+
+interface AuthRequest extends Request {
+  user: { id: string; roles: string[] };
+}
+
+// Middleware de autenticação
+const authenticate = middleware<AuthRequest>(
+  (req, res, next) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'Token não fornecido' });
+    }
+    
+    // Validar token (exemplo simplificado)
+    req.user = { id: '123', roles: ['user'] };
+    next();
+  },
+  {
+    security: [{ bearerAuth: [] }],
+    responses: {
+      401: { description: 'Não autorizado' }
+    }
+  }
+);
+
+// Middleware de autorização
+const authorize = (...roles: string[]) => 
+  middleware<AuthRequest>(
+    (req, res, next) => {
+      if (!req.user.roles.some(role => roles.includes(role))) {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      next();
+    },
+    {
+      responses: {
+        403: { description: 'Acesso negado' }
+      }
+    }
+  );
+
+const app = create<AuthRequest>()
+  .middleware(Middlewares.json());
+
+// Rota protegida
+app
+  .get('/admin/users')
+  .middleware(authenticate)
+  .middleware(authorize('admin'))
+  .handle((req, res) => {
+    res.json({ users: [] });
+  })
+  .doc({
+    summary: 'Listar usuários (Admin)',
+    tags: ['Admin'],
+    responses: { 200: { description: 'Lista de usuários' } }
+  });
+```
+
+### Validação de Dados
+
+```typescript
+import { middleware, Request } from '@ismael1361/router';
+
+interface ValidatedRequest extends Request {
+  validated: {
+    body?: any;
+    params?: any;
+    query?: any;
+  };
+}
+
+const validate = (schema: any) => 
+  middleware<ValidatedRequest>(
+    (req, res, next) => {
+      // Implementar validação (ex: usando Zod, Joi, etc)
+      const result = schema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: 'Dados inválidos',
+          errors: result.error.errors 
+        });
+      }
+      
+      req.validated = { body: result.data };
+      next();
+    },
+    {
+      responses: {
+        400: { description: 'Dados de entrada inválidos' }
+      }
+    }
+  );
+
+router
+  .post('/users')
+  .middleware(validate(userSchema))
+  .handle((req, res) => {
+    const validatedData = req.validated.body;
+    res.status(201).json(validatedData);
+  });
+```
+
+### Organização Modular
+
+```typescript
+// routes/users.routes.ts
+import { route } from '@ismael1361/router';
+
+export const usersRouter = route('/users');
+
+usersRouter
+  .get('/')
+  .handle((req, res) => {
+    res.json([]);
+  })
+  .doc({
+    summary: 'Listar usuários',
+    tags: ['Users']
+  });
+
+usersRouter
+  .post('/')
+  .handle((req, res) => {
+    res.status(201).json(req.body);
+  })
+  .doc({
+    summary: 'Criar usuário',
+    tags: ['Users']
+  });
+
+// routes/products.routes.ts
+export const productsRouter = route('/products');
+// ... definir rotas
+
+// app.ts
+import { create } from '@ismael1361/router';
+import { usersRouter } from './routes/users.routes';
+import { productsRouter } from './routes/products.routes';
+
+const app = express();
+const router = create(app)
+  .middleware(express.json());
+
+router
+  .by(usersRouter)
+  .by(productsRouter);
+```
+
+## 📚 Documentação OpenAPI/Swagger
+
+O módulo gera automaticamente documentação OpenAPI 3.0 compatível com Swagger UI.
+
+### Configuração Completa
+
+```typescript
+import { create, Middlewares } from '@ismael1361/router';
+
+const app = create().middleware(Middlewares.json());
+
+// Definir rotas com documentação
+app
+  .get('/users/:id')
+  .handle((req, res) => {
+    res.json({ id: req.params.id, name: 'John Doe' });
+  })
+  .doc({
+    summary: 'Obter usuário',
+    description: 'Retorna um usuário pelo ID',
+    tags: ['Users'],
+    params: {
+      id: {
+        description: 'ID do usuário',
+        type: 'string',
+        required: true,
+        example: '123'
+      }
+    },
+    responses: {
+      200: {
+        description: 'Usuário encontrado',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
+      404: { description: 'Usuário não encontrado' }
+    }
+  });
+
+// Configurar Swagger
+app.defineSwagger({
+  openapi: '3.0.0',
+  info: {
+    title: 'API de Exemplo',
+    version: '1.0.0',
+    description: 'Documentação automática gerada com @ismael1361/router',
+    contact: {
+      name: 'Suporte',
+      email: 'suporte@exemplo.com'
+    }
+  },
+  servers: [
+    {
+      url: 'http://localhost:3000',
+      description: 'Servidor de desenvolvimento'
+    },
+    {
+      url: 'https://api.exemplo.com',
+      description: 'Servidor de produção'
+    }
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Token JWT no formato Bearer'
+      },
+      apiKey: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'X-API-Key'
+      }
+    }
+  },
+  defaultResponses: {
+    500: { description: 'Erro interno do servidor' },
+    429: { description: 'Muitas requisições' }
+  }
+});
 
 app.listen(3000, () => {
-  console.log('Servidor rodando na porta 3000');
-  console.log('Documentação disponível em http://localhost:3000/api-docs');
+  console.log('🚀 Servidor: http://localhost:3000');
+  console.log('📚 Docs-swagger: http://localhost:3000/docs/swagger');
+  console.log('📚 Docs-redoc: http://localhost:3000/docs/redoc');
 });
 ```
+
+## 🔷 TypeScript
+
+O módulo é totalmente tipado e oferece excelente suporte ao TypeScript.
+
+### Tipos Personalizados
+
+```typescript
+import { Request, Response } from '@ismael1361/router';
+
+// Estender Request
+interface CustomRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    roles: string[];
+  };
+  requestId: string;
+  startTime: number;
+}
+
+// Estender Response
+interface CustomResponse extends Response {
+  sendSuccess: (data: any) => void;
+  sendError: (message: string, code?: number) => void;
+}
+
+// Usar tipos personalizados
+const router = create<CustomRequest, CustomResponse>(app);
+
+router
+  .get('/profile')
+  .handle((req, res) => {
+    // req.user está totalmente tipado
+    // res.sendSuccess está disponível
+    res.sendSuccess({ user: req.user });
+  });
+```
+
+### Inferência de Tipos
+
+```typescript
+// Os tipos são inferidos automaticamente
+router
+  .get('/users/:id')
+  .handle((req, res) => {
+    // req.params.id é string
+    // req.query é Record<string, any>
+    // req.body é any (pode ser tipado com middleware)
+    const userId: string = req.params.id;
+  });
+```
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Por favor, siga estas etapas:
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
+3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
+4. Push para a branch (`git push origin feature/MinhaFeature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](MIT) para mais detalhes.
+
+## 🙏 Agradecimentos
+
+- Express.js pela base sólida
+- Swagger/OpenAPI pela especificação de documentação
+- A comunidade TypeScript
+
+---
+
+Desenvolvido com ❤️ por [Ismael Souza Silva](https://github.com/ismael1361)

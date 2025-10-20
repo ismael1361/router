@@ -1,6 +1,6 @@
 import type swaggerJSDoc from "swagger-jsdoc";
 import type { MiddlewareCallback, MiddlewareFCDoc, Request, Response, SwaggerOptions } from "./type";
-import { RequestHandler } from "./handler";
+import { Handler, RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
 import * as http from "http";
@@ -34,7 +34,7 @@ import { RequestMiddleware } from "./middleware";
  */
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
 	/** A instância subjacente do Express. */
-	app: Express = express();
+	public app: Express = express();
 	private swaggerOptions?: SwaggerOptions = undefined;
 
 	/**
@@ -76,6 +76,34 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			this.layers.middleware([callback].map(createDynamicMiddleware), doc);
 		}
 		return this;
+	}
+
+	/**
+	 * Cria um componente de manipulador (handler) reutilizável.
+	 * Este método é um atalho para a função `handler` exportada, permitindo criar
+	 * um manipulador completo e reutilizável que pode encapsular uma ou mais funções de middleware
+	 * e um manipulador final.
+	 *
+	 * @example
+	 * // Crie um manipulador reutilizável que primeiro executa um middleware e depois a lógica principal.
+	 * const processDataHandler = app.handler(
+	 *   middleware(dataValidationMiddleware)
+	 *     .handler((req, res) => {
+	 *       // A lógica principal do handler aqui.
+	 *       res.json({ processedData: req.validatedData });
+	 *     })
+	 * );
+	 *
+	 * // Use o manipulador reutilizável em uma rota.
+	 * app.post('/process', { summary: 'Processar dados' })
+	 *   .handler(processDataHandler);
+	 *
+	 * @param {MiddlewareCallback<Rq & Req, Rs & Res>} callback - A função ou componente de middleware/handler.
+	 * @param {MiddlewareFCDoc} [doc] - Documentação OpenAPI opcional para este manipulador.
+	 * @returns {Handler<Rq & Req, Rs & Res>} Uma instância de `Handler` que pode ser usada em rotas.
+	 */
+	handler<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): Handler<Rq & Req, Rs & Res> {
+		return new Handler(callback, undefined, doc);
 	}
 
 	/**
@@ -258,7 +286,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} path - O prefixo do caminho para o sub-roteador.
 	 * @returns {Router<Rq, Rs>} Uma nova instância de `Router` para o sub-roteador.
 	 */
-	route(path: string): Router<Rq, Rs> {
+	route(path: string = ""): Router<Rq, Rs> {
 		return new Router("", this.layers.route(path));
 	}
 
