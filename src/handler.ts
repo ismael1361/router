@@ -12,7 +12,7 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 		super(undefined, router);
 	}
 
-	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>): RequestHandler<Rq & Req, Rs & Res> {
+	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): RequestHandler<Rq & Req, Rs & Res> {
 		if (callback instanceof RequestMiddleware) {
 			callback.router.layers
 				.filter(({ type, handle }) => type === "middleware" && !!handle)
@@ -21,10 +21,13 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 		} else {
 			this.middlewares.push(createDynamicMiddleware(callback));
 		}
+		if (doc) {
+			this.doc = joinDocs(this.doc || {}, doc);
+		}
 		return this;
 	}
 
-	handler<Req extends Request = Request, Res extends Response = Response>(callback: HandlerCallback<Rq & Req, Rs & Res>): RouterProps {
+	handler<Req extends Request = Request, Res extends Response = Response>(callback: HandlerCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): RouterProps {
 		if (callback instanceof Handler) {
 			callback.router.layers
 				.filter(({ type, handle }) => type === "middleware" && !!handle)
@@ -34,7 +37,7 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 			this.middlewares.push(createDynamicMiddleware(callback));
 		}
 
-		const route = this.router.layers[this.type](this.path, this.middlewares, this.doc);
+		const route = this.router.layers[this.type](this.path, this.middlewares, joinDocs(this.doc || {}, doc || {}));
 
 		return {
 			type: this.type,

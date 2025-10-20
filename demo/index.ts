@@ -46,18 +46,18 @@ export const fileMiddleware = middleware<FileRequest>((req, res, next) => {
 // 3. Use o middleware em uma rota.
 const userRouter = create().middleware(authMiddleware);
 
+const getProfileDoc = doc({
+	summary: "Get user profile",
+});
+
 const getProfile = middleware(authMiddleware) // Aplica o middleware à rota
 	.middleware(fileMiddleware) // Aplica o middleware à rota
 	.handler((req, res) => {
 		// 'req.user' está disponível e fortemente tipado aqui.
 		res.json({ profile: req.user });
-	});
+	}, getProfileDoc);
 
-const getProfileDoc = doc({
-	summary: "Get user profile",
-});
-
-userRouter.get("/profile", getProfileDoc).handler(getProfile);
+userRouter.get("/profile").handler(getProfile);
 
 userRouter
 	.post("/profile")

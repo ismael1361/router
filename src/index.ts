@@ -4,6 +4,7 @@ import { Middleware } from "./middleware";
 import { Handler } from "./handler";
 import type swaggerJSDoc from "swagger-jsdoc";
 import { joinObject } from "./utils";
+// import "./Doc";
 
 export type * from "./type";
 
