@@ -174,12 +174,14 @@ export const getRoutes = (router: Layer, basePath: string = "") => {
 		}> = router.routes.map((layer) => {
 			const { path, method, doc } = layer;
 
+			const p = joinPath(basePath, path);
+
 			return {
-				path,
+				path: p,
 				methods: [method],
 				type: "ROUTE",
 				swagger: {
-					paths: { [path]: { [method]: doc?.operation || {} } },
+					paths: { [p]: { [method]: doc?.operation || {} } },
 					components: doc?.components || {},
 				},
 			};

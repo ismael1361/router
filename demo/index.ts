@@ -4,6 +4,8 @@ import { Layer } from "../src/Layer";
 const app = create();
 const port = 8080;
 
+app.layers.addListener("add", (route) => console.log(route));
+
 app.enable("trust proxy");
 
 app.middleware(Middlewares.json());

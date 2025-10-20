@@ -136,6 +136,7 @@ export type ILayer = {
 );
 
 export interface IRoute {
+	index: number;
 	path: string;
 	method: RouterMethods;
 	handle: Array<HandlerFC | MiddlewareFC>;

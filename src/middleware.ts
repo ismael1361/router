@@ -4,8 +4,14 @@ import { createDynamicMiddleware, joinDocs } from "./utils";
 import { uuidv4 } from "@ismael1361/utils";
 import { Handler } from "./handler";
 
+/**
+ * @internal
+ * Uma classe base para a construção de componentes de middleware encadeáveis.
+ * Esta classe não deve ser instanciada diretamente pelo usuário final.
+ */
 export class RequestMiddleware<Rq extends Request = Request, Rs extends Response = Response> {
-	constructor(callback: MiddlewareCallback<Rq, Rs> | undefined, readonly router: Router = new Router(), doc?: MiddlewareFCDoc) {
+	/** @internal */
+	constructor(callback: MiddlewareCallback<Rq, Rs> | undefined, readonly router: Router = new Router(), public doc?: MiddlewareFCDoc) {
 		if (callback) {
 			if (callback instanceof RequestMiddleware) {
 				callback.router.layers.forEach((l) => {
@@ -13,27 +19,84 @@ export class RequestMiddleware<Rq extends Request = Request, Rs extends Response
 				});
 			} else {
 				callback.id = callback.id || uuidv4("-");
-				callback.doc = joinDocs(callback?.doc || {}, doc || {});
+				this.doc = callback.doc = joinDocs(callback?.doc || {}, doc || {});
 				this.router.middleware(createDynamicMiddleware(callback));
 			}
 		}
 	}
 
+	/**
+	 * Anexa um middleware adicional à cadeia.
+	 *
+	 * @template Req - Tipo de Request estendido pelo novo middleware.
+	 * @template Res - Tipo de Response estendido pelo novo middleware.
+	 * @param {MiddlewareCallback<Rq & Req, Rs & Res>} callback - A função de middleware a ser adicionada.
+	 * @param {MiddlewareFCDoc} [doc] - Documentação OpenAPI opcional para o middleware.
+	 * @returns {RequestMiddleware<Rq & Req, Rs & Res>} Uma nova instância de `RequestMiddleware` com o middleware adicionado.
+	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): RequestMiddleware<Rq & Req, Rs & Res> {
 		return new RequestMiddleware(callback, this.router, doc);
 	}
 }
 
+/**
+ * Representa um componente de middleware encadeável que pode ser finalizado com um manipulador (handler).
+ * Uma instância desta classe é retornada pela função `middleware()`. Permite criar componentes
+ * de lógica reutilizáveis que podem ser aplicados a múltiplas rotas.
+ *
+ * @example
+ * // middlewares/auth.ts
+ * import { middleware, Request } from '@ismael1361/router';
+ *
+ * // Define um tipo para a requisição após a autenticação
+ * interface AuthRequest extends Request {
+ *   user: { id: string; roles: string[] };
+ * }
+ *
+ * // Cria um componente de middleware reutilizável
+ * export const authMiddleware = middleware<AuthRequest>((req, res, next) => {
+ *   // Lógica de autenticação...
+ *   req.user = { id: 'user-123', roles: ['admin'] };
+ *   next();
+ * }, {
+ *   security: [{ bearerAuth: [] }], // Documentação OpenAPI
+ *   responses: { '401': { description: 'Não autorizado' } }
+ * });
+ *
+ * // routes/users.ts
+ * // router.get('/profile')
+ * //   .middleware(authMiddleware) // Aplica o middleware
+ * //   .handler((req, res) => {
+ * //     // req.user está disponível e tipado aqui
+ * //     res.json(req.user);
+ * //   });
+ */
 export class Middleware<Rq extends Request = Request, Rs extends Response = Response> extends RequestMiddleware<Rq, Rs> {
+	/**
+	 * Anexa um middleware adicional à cadeia.
+	 *
+	 * @returns {Middleware<Rq & Req, Rs & Res>} Uma nova instância de `Middleware` para continuar o encadeamento.
+	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): Middleware<Rq & Req, Rs & Res> {
 		return new Middleware(callback, this.router, doc);
 	}
 
+	/**
+	 * Finaliza a cadeia de middlewares e define um manipulador (handler) final.
+	 * Isso transforma o componente de middleware em um componente de manipulador completo e reutilizável.
+	 *
+	 * @returns {Handler<Rq & Req, Rs & Res>} Uma instância de `Handler` que encapsula toda a cadeia.
+	 */
 	handler<Req extends Request = Request, Res extends Response = Response>(callback: HandlerCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): Handler<Rq & Req, Rs & Res> {
 		return new Handler(callback, this.router, doc);
 	}
 }
 
+/**
+ * @internal
+ * Representa um componente de middleware que também possui capacidades de roteamento.
+ * Usado internamente para construir estruturas de roteamento mais complexas.
+ */
 export class MiddlewareRouter<Rq extends Request = Request, Rs extends Response = Response> extends RequestMiddleware<Rq, Rs> {
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): MiddlewareRouter<Rq & Req, Rs & Res> {
 		return new MiddlewareRouter(callback, this.router, doc);
