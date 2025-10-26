@@ -1,19 +1,5 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import type { Prettify } from "../type";
-
-export type ExtractScopesBySecuritySchemes<C extends swaggerJSDoc.Components, S extends keyof NonNullable<C["securitySchemes"]>> = NonNullable<
-	C["securitySchemes"]
->[S] extends swaggerJSDoc.SecurityScheme & {
-	flows?: infer F;
-}
-	? F extends Record<string, infer Flow>
-		? Flow extends swaggerJSDoc.OAuthFlow
-			? keyof NonNullable<Flow["scopes"]>
-			: never
-		: never
-	: never;
-
-export type JoinSecuritySchemes<A extends swaggerJSDoc.Components["securitySchemes"], B extends swaggerJSDoc.Components["securitySchemes"]> = Prettify<A & B>;
+import { Prettify } from "../type";
 
 // API Key
 export type SecuritySchemes_apiKey = {
@@ -52,10 +38,38 @@ export type SecuritySchemes_mutualTLS = {
 };
 
 // Union type com todos os security schemes
-export type SecuritySchemesTypes = SecuritySchemes_apiKey | SecuritySchemes_http | SecuritySchemes_oauth2 | SecuritySchemes_openIdConnect | SecuritySchemes_mutualTLS;
+export type SecuritySchemesTypes = SecuritySchemes_apiKey | SecuritySchemes_http | SecuritySchemes_oauth2 | SecuritySchemes_openIdConnect | SecuritySchemes_mutualTLS | swaggerJSDoc.SecurityScheme;
 
-export type DefinedSecuritySchemes<C extends swaggerJSDoc.Components, N extends string, O extends SecuritySchemesTypes> = Prettify<
-	Omit<C, "securitySchemes"> & { securitySchemes: JoinSecuritySchemes<C["securitySchemes"], { [k in N]: Prettify<O> }> }
->;
+export type ExtractScopesBySecuritySchemes<S> = S extends swaggerJSDoc.SecurityScheme & {
+	flows?: infer F;
+}
+	? F extends Record<string, infer Flow>
+		? Flow extends swaggerJSDoc.OAuthFlow
+			? keyof NonNullable<Flow["scopes"]>
+			: never
+		: never
+	: S extends ComponentSecurity<any, infer I>
+	? ExtractScopesBySecuritySchemes<I>
+	: never;
+
+export type ComponentSecurity<N extends string, O extends SecuritySchemesTypes> = {
+	securitySchemes: {
+		[k in N]: Prettify<O>;
+	};
+};
+
+export type ComponentSchema<N extends string, S extends swaggerJSDoc.Schema> = {
+	schemas: { [k in N]: Prettify<S> };
+};
+
+export type Reference<R> = R extends string
+	? R extends `#/components/${infer I}`
+		? { $ref: `#/components/${I}` }
+		: { $ref: `#/components/${R}` }
+	: R extends ComponentSecurity<infer N, any>
+	? `#/components/securitySchemes/${N}`
+	: R extends ComponentSchema<infer N, any>
+	? `#/components/schemas/${N}`
+	: never;
 
 export type ExtractReferences<C extends swaggerJSDoc.Components> = C extends Record<infer K, infer R> ? (R extends Record<infer E, any> ? `${K & string}/${E & string}` : never) : never;

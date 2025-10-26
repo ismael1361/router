@@ -4,7 +4,7 @@ import { Handler, RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
 import * as http from "http";
-import express, { Express } from "express";
+import express, { Express, Router as ExpressRouter } from "express";
 import swaggerUi from "swagger-ui-express";
 import * as redocUi from "./redocUi";
 import { RequestMiddleware } from "./middleware";
@@ -35,7 +35,7 @@ import { RequestMiddleware } from "./middleware";
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
 	/** A instância subjacente do Express. */
 	public app: Express = express();
-	private swaggerOptions?: SwaggerOptions = undefined;
+	private express_router: ExpressRouter = express.Router();
 
 	/**
 	 * @internal
@@ -237,7 +237,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @returns {swaggerJSDoc.Options} O objeto de opções pronto para ser usado por `swagger-jsdoc`.
 	 */
 	getSwagger(options?: swaggerJSDoc.OAS3Definition, defaultResponses: swaggerJSDoc.Responses = {}): swaggerJSDoc.Options {
-		const swaggerOptions = { path: "/doc", ...this.swaggerOptions, ...(options || {}), defaultResponses: { ...(this.swaggerOptions?.defaultResponses || {}), ...defaultResponses } };
+		const swaggerOptions = { path: "/doc", ...(options || {}), defaultResponses };
 
 		let doc: Pick<swaggerJSDoc.OAS3Definition, "paths" | "components"> = { paths: swaggerOptions?.paths || {}, components: swaggerOptions?.components || {} };
 
@@ -273,7 +273,21 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {SwaggerOptions} options - As opções de configuração.
 	 */
 	defineSwagger(options: SwaggerOptions) {
-		this.swaggerOptions = { ...options, path: options.path || "/doc", defaultResponses: options.defaultResponses || {} };
+		const swaggerOptions = { ...options, path: options.path || "/doc", defaultResponses: options.defaultResponses || {} };
+
+		const path = swaggerOptions.path || "/doc";
+
+		this.express_router.get(joinPath(path, "/swagger/swagger.json"), (req, res) => {
+			res.json(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses).definition);
+		});
+
+		this.express_router.use(joinPath(path, "/swagger"), swaggerUi.serve, (...args: any) => {
+			swaggerUi.setup(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses).definition).apply(this.app, args);
+		});
+
+		this.express_router.use(joinPath(path, "/redoc"), (...args: any) => {
+			redocUi.setup(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses)).apply(this.app, args);
+		});
 	}
 
 	/**
@@ -363,25 +377,17 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	listen(path: string, callback?: (error?: Error) => void): http.Server;
 	listen(handle: any, listeningListener?: (error?: Error) => void): http.Server;
 	listen(...args: any[]) {
-		this.layers.routes.forEach(({ method, path, handle }) => {
-			this.app[method](path, ...handle);
-		});
+		const router: ExpressRouter = express.Router();
 
-		if (this.swaggerOptions) {
-			const path = this.swaggerOptions.path || "/doc";
-
-			this.app.get(joinPath(path, "/swagger/swagger.json"), (req, res) => {
-				res.json(this.getSwagger().definition);
+		this.app.use((req, res, next) => {
+			router.stack = [];
+			this.layers.routes.forEach(({ method, path, handle }) => {
+				router[method](path, ...handle);
 			});
+			next();
+		}, router);
 
-			this.app.use(joinPath(path, "/swagger"), swaggerUi.serve, (...args: any) => {
-				swaggerUi.setup(this.getSwagger().definition).apply(this.app, args);
-			});
-
-			this.app.use(joinPath(path, "/redoc"), (...args: any) => {
-				redocUi.setup(this.getSwagger()).apply(this.app, args);
-			});
-		}
+		this.app.use(this.express_router);
 
 		return this.app.listen(...args);
 	}
