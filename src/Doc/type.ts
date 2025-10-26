@@ -72,4 +72,22 @@ export type Reference<R> = R extends string
 	? `#/components/schemas/${N}`
 	: never;
 
-export type ExtractReferences<C extends swaggerJSDoc.Components> = C extends Record<infer K, infer R> ? (R extends Record<infer E, any> ? `${K & string}/${E & string}` : never) : never;
+export interface ModelValueNumber extends swaggerJSDoc.Schema {
+	type?: "number" | "integer";
+	format?: "float" | "double" | "int32" | "int64";
+	minimum?: number;
+	maximum?: number;
+	exclusiveMinimum?: boolean;
+	exclusiveMaximum?: boolean;
+	description?: string;
+	nullable?: boolean;
+}
+
+export interface ModelValueString extends swaggerJSDoc.Schema {
+	format?: "date" | "date-time" | "password" | "byte" | "binary" | "email" | "uuid" | "uri" | "hostname" | "ipv4" | "ipv6";
+	minLength?: number;
+	maxLength?: number;
+	description?: string;
+	pattern?: RegExp | string;
+	nullable?: boolean;
+}

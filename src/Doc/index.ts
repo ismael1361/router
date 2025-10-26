@@ -1,6 +1,47 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import type { ExtractReferences, ExtractScopesBySecuritySchemes, Reference, ComponentSecurity, SecuritySchemesTypes, ComponentSchema } from "./type";
+import type { ExtractScopesBySecuritySchemes, Reference, ComponentSecurity, SecuritySchemesTypes, ComponentSchema, ModelValueNumber, ModelValueString } from "./type";
 import type { MiddlewareFCDoc, Prettify } from "../type";
+
+class Model {
+	type?: "string" | "number" | "integer" | "boolean" | "array" | "object";
+	format?: string | undefined;
+
+	constructor() {}
+
+	static boolean(): swaggerJSDoc.Schema {
+		return {
+			type: "boolean",
+		};
+	}
+
+	static number(options: ModelValueNumber): swaggerJSDoc.Schema {
+		let { type = "number", format, ...opt } = options;
+		type = ["int32", "int64"].includes(format || "") ? "integer" : ["float", "double"].includes(format || "") ? "number" : type;
+		return {
+			type,
+			format,
+			...opt,
+		};
+	}
+
+	static string(options: ModelValueString): swaggerJSDoc.Schema {
+		let { pattern, ...opt } = options;
+
+		pattern = pattern instanceof RegExp ? pattern.toString() : pattern;
+
+		return {
+			type: "string",
+			pattern,
+			...options,
+		};
+	}
+
+	static array(): swaggerJSDoc.Schema {
+		return {
+			type: "array",
+		};
+	}
+}
 
 export class Doc {
 	constructor(public operation: swaggerJSDoc.Operation = {}, public components: swaggerJSDoc.Components = {} as any) {}

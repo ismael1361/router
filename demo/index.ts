@@ -94,6 +94,10 @@ userRouter.by(v1_router);
 
 userRouter.get("/routes").handler((req, res) => res.json(app.layers.routes));
 
+setTimeout(() => {
+	v1_router.get("/userId").handler((req, res) => res.json({ users: [] }));
+}, 1000 * 5);
+
 app.by(userRouter);
 
 app.defineSwagger({
