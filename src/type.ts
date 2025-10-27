@@ -33,7 +33,7 @@ export type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 export type RouterMethods = "get" | "post" | "put" | "delete" | "patch" | "options" | "head" | "all" | "use";
 
-export interface Request<ReqQuery extends string = any, ReqBody = any, ResBody = any, ReqParams extends string = any>
+export interface Request<ReqQuery extends string = any, ReqBody = any, ReqParams extends string = any, ResBody = any>
 	extends ExpressRequest<Record<ReqParams, any>, ResBody, Identity<ReqBody>, Record<ReqQuery, any>> {
 	clientIp: string;
 	body: Identity<ReqBody>;

@@ -10,8 +10,12 @@ app.enable("trust proxy");
 
 app.middleware(Middlewares.json());
 
-interface AuthRequest extends Request<"userId" | "id", any> {
-	body: { user?: { id: string; roles: string[] } };
+app.middleware((req, res, next) => {
+	console.log("main middleware");
+	next();
+});
+
+interface AuthRequest extends Request<"userId" | "id", { user?: { id: string; roles: string[] } }> {
 	user: { id: string; roles: string[] };
 }
 

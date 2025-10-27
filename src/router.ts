@@ -8,6 +8,7 @@ import express, { Express, Router as ExpressRouter } from "express";
 import swaggerUi from "swagger-ui-express";
 import * as redocUi from "./redocUi";
 import { RequestMiddleware } from "./middleware";
+import { HandleError } from "./HandleError";
 
 /**
  * A classe principal do roteador, que encapsula e aprimora o roteador do Express.
@@ -217,7 +218,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {MiddlewareFCDoc} doc - (Opcional) Documentação OpenAPI para o manipulador de rota.
 	 * @returns {RequestHandler<Rq, Rs>} Uma instância de `RequestHandler` para encadear middlewares e o manipulador final.
 	 */
-	use(path: string, doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
+	use(path: string = "", doc?: MiddlewareFCDoc): RequestHandler<Rq, Rs> {
 		return new RequestHandler(this, "use", path, doc);
 	}
 
@@ -277,7 +278,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		const path = swaggerOptions.path || "/doc";
 
-		this.express_router.get(joinPath(path, "/swagger/swagger.json"), (req, res) => {
+		this.express_router.get(joinPath(path, "/swagger/definition.json"), (req, res) => {
 			res.json(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses).definition);
 		});
 
@@ -388,6 +389,12 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		}, router);
 
 		this.app.use(this.express_router);
+
+		this.app.use(
+			createDynamicMiddleware((req, res, next) => {
+				throw new HandleError("Not Found", "NOT_FOUND", 404);
+			}) as any,
+		);
 
 		return this.app.listen(...args);
 	}

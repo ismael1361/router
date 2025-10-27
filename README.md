@@ -134,7 +134,13 @@ middleware<Req extends Request, Res extends Response>(
 ```typescript
 import { middleware, Request } from '@ismael1361/router';
 
-interface AuthRequest extends Request {
+interface AuthRequest extends Request<
+  "api_key" | "token", 
+  { 
+    api_key?: string; 
+    token?: string 
+  }
+> {
   user: { id: string; roles: string[] };
 }
 
@@ -308,7 +314,7 @@ Registra uma rota que responde a todos os métodos HTTP.
 
 #### Métodos de Configuração
 
-##### `.use(path: string, doc?: MiddlewareFCDoc)`
+##### `.use(path?: string, doc?: MiddlewareFCDoc)`
 Monta middlewares em um caminho específico.
 
 ```typescript
@@ -318,7 +324,7 @@ router.use('/api').handle((req, res, next) => {
 });
 ```
 
-##### `.route(path: string)`
+##### `.route(path?: string)`
 Cria um sub-roteador com prefixo.
 
 ```typescript
@@ -361,12 +367,13 @@ const productsRouter = route('/products');
 mainRouter.by(productsRouter);
 ```
 
-##### `.getSwagger(options?, defaultResponses?)`
-Gera a especificação OpenAPI completa.
+##### `.defineSwagger(options: SwaggerOptions)`
+Gera as rotas de documentação para a especificação OpenAPI completa.
 
 ```typescript
-import swaggerJSDoc from 'swagger-jsdoc';
-// import swaggerUi from 'swagger-ui-express';
+import { create } from '@ismael1361/router';
+
+const router = create();
 
 const swaggerDefinition = {
   openapi: '3.0.0',
@@ -384,14 +391,21 @@ const swaggerDefinition = {
         bearerFormat: 'JWT'
       }
     }
-  }
+  },
+  defaultResponses: {
+    400: { description: "Dados inválidos" },
+    401: {
+      description: "Falha na autenticação",
+    },
+    403: { description: "Acesso negado" },
+    500: { description: "Erro interno do servidor" },
+  },
 };
 
-const swaggerOptions = router.getSwagger(swaggerDefinition);
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
-
-// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-console.log(swaggerSpec);
+router.defineSwagger(swaggerDefinition);
+// By swagger json -> /doc/swagger/definition.json
+// By swagger      -> /doc/swagger
+// By redoc        -> /doc/redoc
 ```
 
 ## 🎯 Exemplos Avançados
@@ -690,11 +704,14 @@ router
 ### Inferência de Tipos
 
 ```typescript
+import { Request } from '@ismael1361/router';
+
 // Os tipos são inferidos automaticamente
 router
   .get('/users/:id')
-  .handle((req, res) => {
-    // req.params.id é string
+  .handle<Request<any, any, "id">>((req, res) => {
+    // req.params é Record<"id", any>
+    // req.params.id é any
     // req.query é Record<string, any>
     // req.body é any (pode ser tipado com middleware)
     const userId: string = req.params.id;

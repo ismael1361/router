@@ -4,6 +4,7 @@ import { HandleError } from "./HandleError";
 import fs from "fs";
 import { deepEqual } from "@ismael1361/utils";
 import { Layer } from "./Layer";
+import path from "path";
 
 export const isConstructedObject = (value: any): boolean => {
 	return typeof value === "object" && value !== null && value.constructor !== Object;
@@ -239,7 +240,7 @@ export function tryHandler(handler: MiddlewareFC<any, any>) {
 						const stack = (error as any).stack || error;
 						if (level === "ERROR") console.error(error);
 						if (level === "WARN") console.warn(error);
-						fs.appendFileSync("stacks.log", `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
+						fs.appendFileSync(path.join(process.cwd(), "stacks.log"), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
 					}
 				}
 		  }

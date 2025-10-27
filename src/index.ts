@@ -138,3 +138,11 @@ export function doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, compone
 	const { components: comp = {}, ...op } = operation;
 	return { ...op, components: joinObject(comp, components) };
 }
+
+export default {
+	create,
+	route,
+	middleware,
+	handler,
+	doc,
+};
