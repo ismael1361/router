@@ -313,3 +313,23 @@ export function createDynamicMiddleware<Req extends Request = Request, Res exten
 	callback.doc = middleware.doc || {};
 	return callback;
 }
+
+export const getCorsOptions = (allowedOrigins: string) => {
+	return {
+		origin: allowedOrigins === "*" ? true : allowedOrigins === "" ? false : allowedOrigins.split(/,\s*/),
+		methods: "GET,PUT,POST,DELETE,OPTIONS",
+		allowedHeaders: "Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With",
+	};
+};
+
+export const getCorsHeaders = (allowedOrigins: string, currentOrigin: string | undefined) => {
+	const corsOptions = getCorsOptions(allowedOrigins);
+	const origins =
+		typeof corsOptions.origin === "boolean" ? (corsOptions.origin ? currentOrigin ?? "*" : "") : corsOptions.origin instanceof Array ? corsOptions.origin.join(",") : corsOptions.origin;
+	return {
+		"Access-Control-Allow-Origin": origins,
+		"Access-Control-Allow-Methods": corsOptions.methods,
+		"Access-Control-Allow-Headers": corsOptions.allowedHeaders,
+		"Access-Control-Expose-Headers": "Content-Length, Content-Range",
+	};
+};

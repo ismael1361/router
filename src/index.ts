@@ -6,6 +6,8 @@ import type swaggerJSDoc from "swagger-jsdoc";
 import { joinObject } from "./utils";
 // import "./Doc";
 
+export { getCorsOptions, getCorsHeaders } from "./utils";
+
 export { HandleError } from "./HandleError";
 
 export type * from "./type";

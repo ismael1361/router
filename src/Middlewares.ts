@@ -1,4 +1,6 @@
-import { MiddlewareFC, Request, Response } from "./type";
+import { Readable } from "stream";
+import { HandleError } from "./HandleError";
+import { FileInfo, FilesRequest, MiddlewareFC, Request, Response } from "./type";
 import BodyParser, { OptionsJson, Options, OptionsText, OptionsUrlencoded } from "body-parser";
 
 /**
@@ -97,4 +99,104 @@ export const text = (options?: OptionsText): MiddlewareFC<Request, Response> => 
  */
 export const urlencoded = (options?: OptionsUrlencoded): MiddlewareFC<Request, Response> => {
 	return BodyParser.urlencoded(options);
+};
+
+export const cors = (allowOrigin: string = "*"): MiddlewareFC<Request, Response> => {
+	return (req, res, next) => {
+		// Configuração mais robusta de CORS
+		const origin = req.headers.origin;
+
+		// Definir headers CORS
+		res.setHeader("Access-Control-Allow-Origin", allowOrigin === "*" ? "*" : origin || "*");
+		res.setHeader("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+		res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With");
+		res.setHeader("Access-Control-Allow-Credentials", "true");
+		res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range");
+
+		// Responder a requisições OPTIONS
+		if (req.method === "OPTIONS") {
+			return res.status(200).end();
+		}
+
+		next();
+	};
+};
+
+/**
+ * Middleware para analisar arquivos de uma solicitação.
+ * Os arquivos com suas informações são armazenados no objeto `req.files`, sua tipagem: `FileInfo[]`.
+ * Ao usar esse middleware, é necessário que o corpo da requisição seja um objeto `FormData`.
+ * Se caso o middleware não encontrar nenhum arquivo, ele irá lançar um erro.
+ *
+ * @example
+ * ```ts
+ * Router.middleware(Middleware.files()).handler(async (req, res) => {
+ * });
+ *
+ * Router.middleware(Middleware.files(Middleware.files('image/jpeg', 'image/png', 'application/pdf')).handler(async (req, res) => {
+ * });
+ * ```
+ */
+export const files = (...allowedMimes: string[]): MiddlewareFC<FilesRequest> => {
+	return async (req, res, next) => {
+		allowedMimes = allowedMimes.map((mime) => mime.trim().toLowerCase());
+
+		const rawBody = await new Promise<Buffer>((resolve, reject) => {
+			const chunks: Buffer[] = [];
+			req.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+			req.on("end", () => resolve(Buffer.concat(chunks)));
+			req.on("error", reject);
+		});
+
+		if (!req.headers["content-type"] || !req.headers["content-type"].startsWith("multipart/form-data")) {
+			throw new HandleError("Invalid content type", "BAD_REQUEST", 400);
+		}
+
+		const boundary = req.headers["content-type"].split("boundary=")[1];
+		const parts = rawBody.toString("binary").split(`--${boundary}`);
+		const files: FileInfo[] = [];
+
+		for (const part of parts) {
+			if (part.includes('filename="')) {
+				const [header, ...body] = part.split("\r\n\r\n");
+				const content = body.join("\r\n\r\n").trim();
+				const buffer = Buffer.from(content, "binary");
+
+				// Extrair nome do campo e nome do arquivo
+				const fieldnameMatch = header.match(/name="([^"]+)"/);
+				const filenameMatch = header.match(/filename="([^"]+)"/);
+				const mimetypeMatch = header.match(/Content-Type: ([^\r\n]+)/);
+
+				if (fieldnameMatch && filenameMatch && mimetypeMatch) {
+					const fieldname = fieldnameMatch[1];
+					const filename = filenameMatch[1];
+					const contentType = mimetypeMatch[1].trim().toLowerCase();
+					if (allowedMimes.length > 0 && !allowedMimes.includes(contentType)) {
+						continue;
+					}
+					files.push({
+						fieldname: fieldname,
+						originalname: filename,
+						encoding: "",
+						mimetype: contentType,
+						size: content.length,
+						stream: new Readable(),
+						destination: "",
+						filename: filename,
+						path: "",
+						buffer: buffer.slice(0, -2),
+					});
+				}
+			}
+		}
+
+		if (!files.length) {
+			throw new HandleError("No files were uploaded", "BAD_REQUEST", 400);
+		}
+
+		req.file = files[0];
+		req.files = files;
+
+		next();
+	};
 };

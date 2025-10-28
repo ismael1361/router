@@ -2,6 +2,7 @@ import type { Request as ExpressRequest, Response as ExpressResponse, NextFuncti
 import type swaggerJSDoc from "swagger-jsdoc";
 import type { Middleware, MiddlewareRouter, RequestMiddleware } from "./middleware";
 import type { Handler } from "./handler";
+import type { Readable } from "stream";
 
 export { ExpressRequest, NextFunction, ExpressRouter, ExpressApp };
 
@@ -154,4 +155,39 @@ export interface RouterProps<Req extends Request = any, Res extends Response = a
 export interface SwaggerOptions extends swaggerJSDoc.OAS3Definition {
 	path?: string;
 	defaultResponses?: swaggerJSDoc.Responses;
+}
+
+export interface FileInfo {
+	/** Name of the form field associated with this file. */
+	fieldname: string;
+	/** Name of the file on the uploader's computer. */
+	originalname: string;
+	/**
+	 * Value of the `Content-Transfer-Encoding` header for this file.
+	 * @deprecated since July 2015
+	 * @see RFC 7578, Section 4.7
+	 */
+	encoding: string;
+	/** Value of the `Content-Type` header for this file. */
+	mimetype: string;
+	/** Size of the file in bytes. */
+	size: number;
+	/**
+	 * A readable stream of this file. Only available to the `_handleFile`
+	 * callback for custom `StorageEngine`s.
+	 */
+	stream: Readable;
+	/** `DiskStorage` only: Directory to which this file has been uploaded. */
+	destination: string;
+	/** `DiskStorage` only: Name of this file within `destination`. */
+	filename: string;
+	/** `DiskStorage` only: Full path to the uploaded file. */
+	path: string;
+	/** `MemoryStorage` only: A Buffer containing the entire file. */
+	buffer: Buffer;
+}
+
+export interface FilesRequest extends Request {
+	file: FileInfo;
+	files: FileInfo[];
 }
