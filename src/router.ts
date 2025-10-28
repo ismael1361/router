@@ -1,5 +1,5 @@
 import type swaggerJSDoc from "swagger-jsdoc";
-import type { MiddlewareCallback, MiddlewareFCDoc, Request, Response, SwaggerOptions } from "./type";
+import type { MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, SwaggerOptions } from "./type";
 import { Handler, RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
@@ -77,6 +77,37 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			this.layers.middleware([callback].map(createDynamicMiddleware), doc);
 		}
 		return this;
+	}
+
+	/**
+	 * Executa a cadeia de middlewares globais aplicados diretamente a esta instância do roteador.
+	 * Este método é útil principalmente para testes, permitindo invocar a lógica dos middlewares
+	 * do roteador de forma isolada, sem a necessidade de um servidor HTTP completo.
+	 *
+	 * @param {Rq} request - O objeto de requisição (ou um mock para testes).
+	 * @param {Rs} response - O objeto de resposta (ou um mock para testes).
+	 * @param {NextFunction} next - A função `next` a ser chamada ao final da cadeia de middlewares.
+	 * @returns {Promise<void>} Uma promessa que resolve quando a execução da cadeia é concluída.
+	 *
+	 * @example
+	 * import { create, Request, Response, NextFunction } from '@ismael1361/router';
+	 *
+	 * // 1. Crie um roteador e adicione middlewares globais a ele
+	 * const app = create();
+	 * app.middleware<{ traceId: string }>((req, res, next) => {
+	 *   req.traceId = 'xyz-123';
+	 *   next();
+	 * });
+	 *
+	 * // 2. Crie mocks para os objetos de requisição, resposta e next
+	 * const mockRequest = {} as Request & { traceId: string };
+	 *
+	 * // 3. Execute a cadeia de middlewares do roteador
+	 * await app.executeMiddlewares(mockRequest, {} as Response, () => {});
+	 * console.log(mockRequest.traceId); // Output: 'xyz-123'
+	 */
+	executeMiddlewares(request: Rq, response: Rs, next: NextFunction) {
+		return this.layers.executeMiddlewares(request, response, next);
 	}
 
 	/**

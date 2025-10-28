@@ -1,4 +1,4 @@
-import { middleware, create, route, Middlewares, Request, doc } from "../src";
+import { middleware, handler, create, route, Middlewares, Request, doc } from "../src";
 import { Layer } from "../src/Layer";
 
 const app = create();
@@ -65,14 +65,16 @@ const getProfile = middleware(authMiddleware) // Aplica o middleware à rota
 
 userRouter.get("/profile").handler(getProfile);
 
-userRouter
-	.post("/profile")
-	.handler((req, res) => {
+const post_profile = handler(
+	(req, res) => {
 		res.json({});
-	})
-	.doc({
+	},
+	{
 		summary: "Post user profile",
-	});
+	},
+);
+
+userRouter.post("/profile").handler(post_profile);
 
 userRouter
 	.get("/teste")

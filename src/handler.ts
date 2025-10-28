@@ -1,4 +1,4 @@
-import type { Request, Response, RouterProps, MiddlewareFC, RouterMethods, HandlerFC, MiddlewareFCDoc, HandlerCallback, MiddlewareCallback } from "./type";
+import type { Request, Response, RouterProps, MiddlewareFC, RouterMethods, HandlerFC, MiddlewareFCDoc, HandlerCallback, MiddlewareCallback, NextFunction } from "./type";
 import { createDynamicMiddleware, joinDocs, joinObject } from "./utils";
 import { RequestMiddleware } from "./middleware";
 import { Router } from "./router";
@@ -133,5 +133,36 @@ export class Handler<Rq extends Request = Request, Rs extends Response = Respons
 				this.router.middleware(createDynamicMiddleware(callback));
 			}
 		}
+	}
+
+	/**
+	 * Executa a cadeia de middlewares e o manipulador final encapsulados por esta instância de `Handler`.
+	 * Este método é útil para testes unitários ou para invocar programaticamente a lógica do handler
+	 * fora do ciclo de requisição/resposta padrão do Express.
+	 *
+	 * @param {Rq} request - O objeto de requisição (ou um mock dele).
+	 * @param {Rs} response - O objeto de resposta (ou um mock dele).
+	 * @param {NextFunction} next - A função `next` a ser chamada ao final da cadeia.
+	 * @returns {Promise<void>} Uma promessa que resolve quando a execução da cadeia é concluída.
+	 *
+	 * @example
+	 * import { handler, Request, Response, NextFunction } from '@ismael1361/router';
+	 *
+	 * // 1. Crie um handler reutilizável
+	 * const myHandler = handler<{ user: { id: string } }>((req, res) => {
+	 *   res.json({ userId: req.user.id });
+	 * });
+	 *
+	 * // 2. Crie mocks para os objetos de requisição e resposta (ex: com Jest)
+	 * const mockRequest = { user: { id: '123' } } as Request & { user: { id: string } };
+	 * const mockResponse = { json: (data) => console.log(data) } as Response;
+	 * const mockNext = () => {};
+	 *
+	 * // 3. Execute o handler programaticamente
+	 * await myHandler.execute(mockRequest, mockResponse, mockNext);
+	 * // Output: { userId: '123' }
+	 */
+	execute(request: Rq, response: Rs, next: NextFunction) {
+		return this.router.executeMiddlewares(request, response, next);
 	}
 }

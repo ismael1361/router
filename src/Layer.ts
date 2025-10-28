@@ -1,4 +1,4 @@
-import { HandlerFC, ILayer, IRoute, MiddlewareFC, MiddlewareFCDoc, RouterMethods } from "./type";
+import { HandlerFC, ILayer, IRoute, MiddlewareFC, MiddlewareFCDoc, NextFunction, RouterMethods, Request, Response } from "./type";
 import { getDocHandles, joinDocs, joinPath } from "./utils";
 import { EventEmitter } from "@ismael1361/utils";
 
@@ -145,6 +145,29 @@ export class Layer extends Array<ILayer> {
 				},
 			};
 		});
+	}
+
+	async executeMiddlewares(request: Request, response: Response, next: NextFunction) {
+		const middlewares: (HandlerFC<any, any> | MiddlewareFC<any, any>)[] = [];
+
+		this.filter(({ type }) => {
+			return type === "middleware";
+		}).forEach(({ handle }) => {
+			middlewares.push(...(handle || []));
+		});
+
+		let resolve: any = undefined;
+
+		for (let i = 0; i < middlewares.length; i++) {
+			if (response.headersSent) {
+				break;
+			}
+
+			const middleware = middlewares[i];
+			resolve = await Promise.race([middleware(request, response, i >= middlewares.length - 1 ? next : () => {})]);
+		}
+
+		return resolve;
 	}
 
 	/**

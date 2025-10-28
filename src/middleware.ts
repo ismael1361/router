@@ -1,4 +1,4 @@
-import type { Request, Response, MiddlewareFCDoc, MiddlewareCallback, HandlerCallback } from "./type";
+import type { Request, Response, NextFunction, MiddlewareFCDoc, MiddlewareCallback, HandlerCallback } from "./type";
 import { Router } from "./router";
 import { createDynamicMiddleware, joinDocs } from "./utils";
 import { uuidv4 } from "@ismael1361/utils";
@@ -36,6 +36,38 @@ export class RequestMiddleware<Rq extends Request = Request, Rs extends Response
 	 */
 	middleware<Req extends Request = Request, Res extends Response = Response>(callback: MiddlewareCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): RequestMiddleware<Rq & Req, Rs & Res> {
 		return new RequestMiddleware(callback, this.router, doc);
+	}
+
+	/**
+	 * Executa a cadeia de middlewares encapsulados por esta instância.
+	 * Este método é projetado principalmente para testes, permitindo que você execute a lógica do middleware
+	 * de forma isolada, sem a necessidade de um servidor HTTP real.
+	 *
+	 * @param {Rq} request - O objeto de requisição (ou um mock para testes).
+	 * @param {Rs} response - O objeto de resposta (ou um mock para testes).
+	 * @param {NextFunction} next - A função `next` a ser chamada ao final da cadeia de middlewares.
+	 * @returns {Promise<void>} Uma promessa que resolve quando a execução da cadeia é concluída.
+	 *
+	 * @example
+	 * import { middleware, Request, Response, NextFunction } from '@ismael1361/router';
+	 *
+	 * // 1. Crie um componente de middleware reutilizável
+	 * const myMiddleware = middleware<{ user: { id: string } }>((req, res, next) => {
+	 *   req.user = { id: 'test-user' };
+	 *   next();
+	 * });
+	 *
+	 * // 2. Crie mocks para os objetos de requisição, resposta e next (ex: com Jest)
+	 * const mockRequest = {} as Request & { user: { id: string } };
+	 * const mockResponse = {} as Response;
+	 * const mockNext = () => {}; // ou jest.fn()
+	 *
+	 * // 3. Execute o middleware programaticamente e verifique o resultado
+	 * await myMiddleware.execute(mockRequest, mockResponse, mockNext);
+	 * console.log(mockRequest.user); // Output: { id: 'test-user' }
+	 */
+	execute(request: Rq, response: Rs, next: NextFunction) {
+		return this.router.executeMiddlewares(request, response, next);
 	}
 }
 
@@ -90,6 +122,33 @@ export class Middleware<Rq extends Request = Request, Rs extends Response = Resp
 	handler<Req extends Request = Request, Res extends Response = Response>(callback: HandlerCallback<Rq & Req, Rs & Res>, doc?: MiddlewareFCDoc): Handler<Rq & Req, Rs & Res> {
 		return new Handler(callback, this.router, doc);
 	}
+
+	/**
+	 * Executa a cadeia de middlewares encapsulados por esta instância de `Middleware`.
+	 * Este método é herdado e serve principalmente para fins de teste, permitindo invocar
+	 * a lógica do middleware de forma isolada.
+	 *
+	 * @param {Rq} request - O objeto de requisição (ou um mock para testes).
+	 * @param {Rs} response - O objeto de resposta (ou um mock para testes).
+	 * @param {NextFunction} next - A função `next` a ser chamada ao final da cadeia.
+	 * @returns {Promise<void>} Uma promessa que resolve quando a execução é concluída.
+	 *
+	 * @example
+	 * import { middleware, Request, Response, NextFunction } from '@ismael1361/router';
+	 *
+	 * const addDataMiddleware = middleware<{ customData: string }>((req, res, next) => {
+	 *   req.customData = 'Hello from middleware!';
+	 *   next();
+	 * });
+	 *
+	 * const mockRequest = {} as Request & { customData: string };
+	 *
+	 * await addDataMiddleware.execute(mockRequest, {} as Response, () => {});
+	 * console.log(mockRequest.customData); // Output: 'Hello from middleware!'
+	 */
+	execute(request: Rq, response: Rs, next: NextFunction) {
+		return super.execute(request, response, next);
+	}
 }
 
 /**
@@ -109,5 +168,9 @@ export class MiddlewareRouter<Rq extends Request = Request, Rs extends Response 
 	by(router: Router): this {
 		this.router.by(router);
 		return this;
+	}
+
+	execute(request: Rq, response: Rs, next: NextFunction) {
+		return super.execute(request, response, next);
 	}
 }
