@@ -1,4 +1,4 @@
-import type swaggerJSDoc from "swagger-jsdoc";
+import swaggerJSDoc from "swagger-jsdoc";
 import type { MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, SwaggerOptions } from "./type";
 import { Handler, RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
@@ -9,6 +9,9 @@ import swaggerUi from "swagger-ui-express";
 import * as redocUi from "./redocUi";
 import { RequestMiddleware } from "./middleware";
 import { HandleError } from "./HandleError";
+import swaggerMarkdown from "./swagger-markdown";
+import path from "path";
+import { uuidv4 } from "@ismael1361/utils";
 
 /**
  * A classe principal do roteador, que encapsula e aprimora o roteador do Express.
@@ -286,7 +289,13 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			}
 		});
 
-		return { definition: { ...omit(swaggerOptions, "path", "defaultResponses"), ...doc }, apis: [] } as any;
+		return {
+			definition: {
+				...omit(swaggerOptions, "path", "defaultResponses"),
+				...doc,
+			},
+			apis: [],
+		} as any;
 	}
 
 	/**
@@ -309,16 +318,42 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		const path = swaggerOptions.path || "/doc";
 
+		const swaggerSpec = () => {
+			const options = this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses);
+			let markdown: string = "",
+				definition: swaggerJSDoc.SwaggerDefinition = {} as any;
+
+			try {
+				definition = swaggerJSDoc(options) as any;
+				markdown = swaggerMarkdown.convert(options);
+			} catch {}
+
+			return {
+				options,
+				definition,
+				markdown,
+			};
+		};
+
+		this.express_router.use(joinPath(path, "/.md"), (res, req) => {
+			req.setHeader("Content-Type", "text/markdown");
+			req.send(swaggerSpec().markdown);
+		});
+
+		this.express_router.use(joinPath(path, "/markdown"), (...args: any) => {
+			swaggerMarkdown.setup(swaggerSpec().options).apply(this.app, args);
+		});
+
 		this.express_router.get(joinPath(path, "/swagger/definition.json"), (req, res) => {
-			res.json(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses).definition);
+			res.json(swaggerSpec().definition);
 		});
 
 		this.express_router.use(joinPath(path, "/swagger"), swaggerUi.serve, (...args: any) => {
-			swaggerUi.setup(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses).definition).apply(this.app, args);
+			swaggerUi.setup(swaggerSpec().definition).apply(this.app, args);
 		});
 
 		this.express_router.use(joinPath(path, "/redoc"), (...args: any) => {
-			redocUi.setup(this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses)).apply(this.app, args);
+			redocUi.setup(swaggerSpec().options).apply(this.app, args);
 		});
 	}
 
@@ -421,9 +456,20 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		this.app.use(this.express_router);
 
+		this.app.get("/.well-known/appspecific/com.chrome.devtools.json", (req, res) => {
+			const projectRoot = path.resolve(__dirname);
+			const workspaceUuid = uuidv4("-"); // Gera um UUID v4
+			res.json({
+				workspace: {
+					root: projectRoot,
+					uuid: workspaceUuid,
+				},
+			});
+		});
+
 		this.app.use(
 			createDynamicMiddleware((req, res, next) => {
-				throw new HandleError("Not Found", "NOT_FOUND", 404);
+				throw new HandleError(`Not Found by ${req.method} ${req.url}`, "NOT_FOUND", 404);
 			}) as any,
 		);
 
