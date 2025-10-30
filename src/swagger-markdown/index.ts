@@ -88,7 +88,7 @@ export const setup = (swagger: swaggerJSDoc.Options): RequestHandler => {
                 }
             }
         </script>
-        <style>${fs.readFileSync(path.join(__dirname, "style.css"), "utf8")}</style>
+        <style>${fs.readFileSync(path.join(__dirname, "../../resources/markdown-style.css"), "utf8")}</style>
     </head>
     <body>
         <div class="markdown-body" id="content"></div>

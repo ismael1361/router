@@ -6,7 +6,7 @@ import { RequestHandler } from "express";
 export const setup = (swagger: swaggerJSDoc.Options): RequestHandler => {
 	return async (req, res) => {
 		if (req.url.endsWith("openapisnippet.min.js")) {
-			const snippet = fs.readFileSync(path.resolve(__dirname, "openapisnippet.min.js"), "utf-8");
+			const snippet = fs.readFileSync(path.resolve(__dirname, "../../resources/openapisnippet.min.js"), "utf-8");
 			res.setHeader("Content-Type", "application/javascript");
 			res.send(Buffer.from(snippet, "utf8"));
 			return;
