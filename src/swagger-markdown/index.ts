@@ -122,7 +122,7 @@ export const setup = (swagger: swaggerJSDoc.Options): RequestHandler => {
                 .use(rehypeRaw)
                 .use(rehypeFormat)
                 .use(rehypeStringify)
-                .process(\`${convert(swagger)}\`)
+                .process(\`${convert(swagger).replaceAll("`", "\\`")}\`)
                 .then((result) => {
                     document.getElementById("content").innerHTML = result.toString();
                 });

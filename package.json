@@ -1,6 +1,6 @@
 {
 	"name": "@ismael1361/router",
-	"version": "1.0.8",
+	"version": "1.0.9",
 	"description": "A API of router functions built with TypeScript",
 	"main": "dist/index.js",
 	"module": "dist/index.esm.js",
@@ -68,6 +68,7 @@
 		"@ismael1361/utils": "^1.0.4",
 		"body-parser": "^2.2.0",
 		"express": "^5.1.0",
+		"openapi-snippet": "^0.14.0",
 		"swagger-jsdoc": "^6.2.8",
 		"swagger-ui-express": "^5.0.1"
 	}

@@ -40,6 +40,8 @@ export default (path: string, data: swaggerJSDoc.PathItem, parameters?: Record<s
 				methodLine.push(`#### ${method.toUpperCase()}  {#${path}-${method}}`);
 				const pathInfo: swaggerJSDoc.Operation = data[method];
 
+				methodLine.push(`##### Path:\n\n**${path}**\n`);
+
 				// Set summary
 				if (pathInfo.summary) {
 					methodLine.push(`##### Summary:\n\n${pathInfo.summary}\n`);
@@ -63,6 +65,18 @@ export default (path: string, data: swaggerJSDoc.PathItem, parameters?: Record<s
 				// Build security
 				if (pathInfo.security) {
 					methodLine.push(`${security(pathInfo.security)}\n`);
+				}
+
+				if ("x-codeSamples" in pathInfo) {
+					methodLine.push(`\n---\n`);
+
+					for (const { lang, label, source } of pathInfo["x-codeSamples"] as Array<{ lang: string; label: string; source: string }>) {
+						methodLine.push(`##### ${label || lang}:\n`);
+
+						methodLine.push(`\`\`\`${lang.toLowerCase()}`);
+						methodLine.push(...source.split("\n"));
+						methodLine.push(`\`\`\`\n`);
+					}
 				}
 
 				res.push(...methodLine.filter((v) => typeof v === "string").map((v) => `> ${v.split("\n").join("\n> ")}`));

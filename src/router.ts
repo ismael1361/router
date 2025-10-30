@@ -12,6 +12,7 @@ import { HandleError } from "./HandleError";
 import swaggerMarkdown from "./swagger-markdown";
 import path from "path";
 import { uuidv4 } from "@ismael1361/utils";
+import OpenAPISnippet from "openapi-snippet";
 
 /**
  * A classe principal do roteador, que encapsula e aprimora o roteador do Express.
@@ -289,11 +290,47 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			}
 		});
 
+		const definition = {
+			...omit(swaggerOptions, "path", "defaultResponses"),
+			...doc,
+		};
+
+		const targets: Record<string, string> = {
+			shell_curl: "Shell",
+			shell_httpie: "Shell",
+			node_request: "JavaScript",
+			python_python3: "Python",
+			// php_curl: "PHP",
+			// php_http1: "PHP",
+			// php_http2: "PHP",
+		};
+
+		for (const path in definition.paths) {
+			for (const method in definition.paths[path]) {
+				const generatedCode = OpenAPISnippet.getEndpointSnippets(
+					{
+						servers: [
+							{
+								url: "http://[hostname]",
+							},
+						],
+						...definition,
+					},
+					path,
+					method,
+					Object.keys(targets),
+				);
+				definition.paths[path][method]["x-codeSamples"] = [];
+
+				for (const snippetIdx in generatedCode.snippets) {
+					const snippet = generatedCode.snippets[snippetIdx];
+					definition.paths[path][method]["x-codeSamples"][snippetIdx] = { lang: targets[snippet.id], label: snippet.title, source: snippet.content };
+				}
+			}
+		}
+
 		return {
-			definition: {
-				...omit(swaggerOptions, "path", "defaultResponses"),
-				...doc,
-			},
+			definition,
 			apis: [],
 		} as any;
 	}

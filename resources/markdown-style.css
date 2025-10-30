@@ -14,10 +14,11 @@ body {
 
 /* Tema GitHub Dark para documento Remark completo */
 html body .markdown-body {
-	padding: 20px;
+	padding: 20px 0px;
 	width: 95%;
 	max-width: 700px;
 	margin: 0 auto;
+	box-sizing: border-box;
 }
 
 /* Títulos */
@@ -154,7 +155,7 @@ html body .task-list-item-checkbox:hover {
 /* Citação */
 html body blockquote {
 	padding: 0.2em 1em;
-	color: #8b949e;
+	color: rgba(255, 255, 255, 0.8);
 	background-color: rgba(0, 0, 0, 0.2);
 	border: 0.1em solid rgba(0, 0, 0, 0.1);
 	border-left: 0.25em solid #30363d;
@@ -220,6 +221,7 @@ html body code {
 	border-radius: 6px;
 	color: #e6edf3;
 	font-family: "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
+	white-space: pre-wrap;
 }
 
 html body figure {
