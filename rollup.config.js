@@ -11,13 +11,19 @@ module.exports = {
 	input: "src/index.ts",
 	output: [
 		{
-			file: "dist/index.js",
 			format: "cjs",
 			sourcemap: true,
+			dir: "dist", // gera múltiplos arquivos em dist/cjs
+			preserveModules: true, // <-- gera 1 arquivo por módulo
+			preserveModulesRoot: "src", // <-- remove o prefixo 'src' nos caminhos
+			entryFileNames: "[name].js", // mantém nome do arquivo (ex: foo/bar.js)
 		},
 		{
-			file: "dist/index.esm.js",
+			dir: "dist", // gera múltiplos arquivos em dist/esm
 			format: "esm",
+			preserveModules: true,
+			preserveModulesRoot: "src",
+			entryFileNames: "[name].esm.js",
 			sourcemap: true,
 		},
 	],
@@ -31,7 +37,7 @@ module.exports = {
 			tsconfig: "./tsconfig.json",
 			sourceMap: true,
 		}),
-		terser(),
+		// terser(),
 	],
 	external: dependencies,
 };

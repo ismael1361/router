@@ -355,14 +355,14 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		const path = swaggerOptions.path || "/doc";
 
-		const swaggerSpec = () => {
+		const swaggerSpec = (...args: string[]) => {
 			const options = this.getSwagger(swaggerOptions, swaggerOptions.defaultResponses);
 			let markdown: string = "",
 				definition: swaggerJSDoc.SwaggerDefinition = {} as any;
 
 			try {
-				definition = swaggerJSDoc(options) as any;
-				markdown = swaggerMarkdown.convert(options);
+				if (args.includes("definition")) definition = swaggerJSDoc(options) as any;
+				if (args.includes("markdown")) markdown = swaggerMarkdown.convert(options);
 			} catch {}
 
 			return {
@@ -374,7 +374,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		this.express_router.use(joinPath(path, "/.md"), (res, req) => {
 			req.setHeader("Content-Type", "text/markdown");
-			req.send(swaggerSpec().markdown);
+			req.send(swaggerSpec("markdown").markdown);
 		});
 
 		this.express_router.use(joinPath(path, "/markdown"), (...args: any) => {
@@ -382,11 +382,11 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		});
 
 		this.express_router.get(joinPath(path, "/swagger/definition.json"), (req, res) => {
-			res.json(swaggerSpec().definition);
+			res.json(swaggerSpec("definition").definition);
 		});
 
 		this.express_router.use(joinPath(path, "/swagger"), swaggerUi.serve, (...args: any) => {
-			swaggerUi.setup(swaggerSpec().definition).apply(this.app, args);
+			swaggerUi.setup(swaggerSpec("definition").definition).apply(this.app, args);
 		});
 
 		this.express_router.use(joinPath(path, "/redoc"), (...args: any) => {
