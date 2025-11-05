@@ -94,14 +94,16 @@ export class Layer extends Array<ILayer> {
 		const doc: MiddlewareFCDoc = args[1] instanceof Layer ? args[2] : args[0] instanceof Layer || typeof args[0] === "string" ? args[1] : args[0];
 		const root = new Layer(joinPath(this.path, path), doc);
 
-		this.push({ path: "", method: "use", type: "route", route: root });
-
 		if (args[0] instanceof Layer || args[1] instanceof Layer) {
 			const route: Layer = args[0] instanceof Layer ? args[0] : args[1];
+
+			this.push({ path: "", method: "use", type: "route", route: root });
 
 			root.push({ path: "", method: "use", type: "route", route });
 
 			return route;
+		} else {
+			this.push({ path: path, method: "use", type: "route", route: root });
 		}
 
 		return root;

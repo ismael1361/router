@@ -40,7 +40,7 @@ import OpenAPISnippet from "openapi-snippet";
 export class Router<Rq extends Request = Request, Rs extends Response = Response> {
 	/** A instância subjacente do Express. */
 	public app: Express = express();
-	private express_router: ExpressRouter = express.Router();
+	readonly express_router: ExpressRouter = express.Router();
 
 	/**
 	 * @internal
@@ -424,6 +424,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	by(router: Router) {
 		if (router instanceof Router) {
 			this.layers.by(router.layers);
+			this.express_router.use(router.routePath, router.express_router);
 		}
 		return this;
 	}
@@ -491,7 +492,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			next();
 		}, router);
 
-		this.app.use(this.express_router);
+		this.app.use(this.routePath, this.express_router);
 
 		this.app.get("/.well-known/appspecific/com.chrome.devtools.json", (req, res) => {
 			const projectRoot = path.resolve(__dirname);

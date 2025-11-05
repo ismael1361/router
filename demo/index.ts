@@ -1,5 +1,4 @@
 import { middleware, handler, create, route, Middlewares, Request, doc } from "../src";
-import { Layer } from "../src/Layer";
 
 const app = create();
 const port = 8080;
@@ -96,7 +95,7 @@ v1_router
 	});
 v1_router.post("/users").handler((req, res) => res.json({ users: [] }));
 
-userRouter.by(v1_router);
+userRouter.route("/teste-route").by(v1_router);
 
 userRouter.get("/routes").handler((req, res) => res.json(app.layers.routes));
 
