@@ -101,17 +101,64 @@ export const urlencoded = (options?: OptionsUrlencoded): MiddlewareFC<Request, R
 	return BodyParser.urlencoded(options);
 };
 
-export const cors = (allowOrigin: string = "*"): MiddlewareFC<Request, Response> => {
+type CorsOptionsMethods = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH" | "HEAD";
+
+interface CorsOptions {
+	/**
+	 * Informa quais métodos HTTP são permitidos quando a requisição é cross-origin.
+	 * - OPTIONS é essencial para preflight requests (verificação prévia feita pelo navegador).
+	 * - Sem esse header, o navegador bloqueia métodos não listados.
+	 */
+	allowedMethods?: CorsOptionsMethods[] | string;
+	/**
+	 * Define quais headers customizados o cliente pode enviar.
+	 *
+	 * Casos comuns:
+	 * - Authorization → tokens JWT / Bearer
+	 * - Content-Type → JSON, multipart/form-data
+	 * - X-Requested-With → requisições AJAX antigas
+	 *
+	 * Se o cliente enviar um header que não esteja nessa lista, o navegador bloqueia a requisição.
+	 */
+	allowedHeaders?: string[] | string;
+	/**
+	 * Permite que a requisição inclua credenciais, como:
+	 * - Cookies
+	 * - Headers de autenticação
+	 * - Certificados TLS do cliente
+	 */
+	credentials?: boolean;
+	/**
+	 * Esse header define quais headers adicionais podem ser lidos via:
+	 *
+	 * ```js
+	 * response.headers.get("Content-Length");
+	 * ```
+	 *
+	 * Exemplo de uso:
+	 * - Paginação (Content-Range)
+	 * - Download de arquivos (Content-Length)
+	 */
+	exposeHeaders?: string[] | string;
+}
+
+export const cors = (allowOrigin: string = "*", options: CorsOptions = {}): MiddlewareFC<Request, Response> => {
 	return (req, res, next) => {
 		// Configuração mais robusta de CORS
 		const origin = req.headers.origin;
 
+		options = { allowedMethods: "*", allowedHeaders: "*", credentials: true, exposeHeaders: "*", ...options };
+
 		// Definir headers CORS
 		res.setHeader("Access-Control-Allow-Origin", allowOrigin === "*" ? "*" : origin || "*");
-		res.setHeader("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
-		res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With");
-		res.setHeader("Access-Control-Allow-Credentials", "true");
-		res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range");
+
+		if (options.allowedMethods) res.setHeader("Access-Control-Allow-Methods", Array.isArray(options.allowedMethods) ? options.allowedMethods.join(",") : options.allowedMethods);
+
+		if (options.allowedHeaders) res.setHeader("Access-Control-Allow-Headers", Array.isArray(options.allowedHeaders) ? options.allowedHeaders.join(",") : options.allowedHeaders);
+
+		res.setHeader("Access-Control-Allow-Credentials", options.credentials ? "true" : "false");
+
+		if (options.exposeHeaders) res.setHeader("Access-Control-Expose-Headers", Array.isArray(options.exposeHeaders) ? options.exposeHeaders.join(",") : options.exposeHeaders);
 
 		// Responder a requisições OPTIONS
 		if (req.method === "OPTIONS") {
