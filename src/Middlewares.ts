@@ -150,7 +150,7 @@ export const cors = (allowOrigin: string = "*", options: CorsOptions = {}): Midd
 		options = { allowedMethods: "*", allowedHeaders: "*", credentials: true, exposeHeaders: "*", ...options };
 
 		// Definir headers CORS
-		res.setHeader("Access-Control-Allow-Origin", allowOrigin === "*" ? "*" : origin || "*");
+		res.setHeader("Access-Control-Allow-Origin", allowOrigin || origin || "*");
 
 		if (options.allowedMethods) res.setHeader("Access-Control-Allow-Methods", Array.isArray(options.allowedMethods) ? options.allowedMethods.join(",") : options.allowedMethods);
 

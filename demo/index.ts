@@ -7,6 +7,8 @@ app.layers.addListener("add", (route) => console.log(route));
 
 app.enable("trust proxy");
 
+app.middleware(Middlewares.cors());
+
 app.middleware(Middlewares.json());
 
 app.middleware((req, res, next) => {

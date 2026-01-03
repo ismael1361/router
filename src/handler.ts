@@ -5,6 +5,12 @@ import { Router } from "./router";
 import type swaggerJSDoc from "swagger-jsdoc";
 import { uuidv4 } from "@ismael1361/utils";
 
+const renderHandler = (callback: HandlerCallback<any, any>) => {
+	return (req: Request, res: Response, next: NextFunction) => {
+		return (callback as any)(req, res, next);
+	};
+};
+
 /**
  * Representa um construtor de rotas encadeável.
  *
@@ -38,6 +44,14 @@ export class RequestHandler<Rq extends Request = Request, Rs extends Response = 
 	/** @internal */
 	constructor(public readonly router: Router, public readonly type: RouterMethods, public readonly path: string, public doc?: MiddlewareFCDoc) {
 		super(undefined, router);
+
+		this.middlewares.push((req: Request, res: Response, next: NextFunction) => {
+			if (req.method.toLowerCase() !== this.type.toLowerCase()) {
+				res.status(404).send("Not Found");
+				return;
+			}
+			next();
+		});
 	}
 
 	/**

@@ -487,7 +487,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		this.app.use((req, res, next) => {
 			router.stack = [];
 			this.layers.routes.forEach(({ method, path, handle }) => {
-				router[method](path, ...handle);
+				router.all(path, ...handle);
 			});
 			next();
 		}, router);
