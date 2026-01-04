@@ -1,7 +1,7 @@
 import swaggerJSDoc from "swagger-jsdoc";
 import type { MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, SwaggerOptions } from "./type";
 import { Handler, RequestHandler } from "./handler";
-import { createDynamicMiddleware, getRoutes, joinObject, joinPath, omit } from "./utils";
+import { createDynamicMiddleware, getRoutes, getRoutesExpress, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
 import * as http from "http";
 import express, { Express, Router as ExpressRouter } from "express";
@@ -13,6 +13,7 @@ import swaggerMarkdown from "./swagger-markdown";
 import path from "path";
 import { uuidv4 } from "@ismael1361/utils";
 import OpenAPISnippet from "openapi-snippet";
+import * as Middlewares from "./Middlewares";
 
 /**
  * A classe principal do roteador, que encapsula e aprimora o roteador do Express.
@@ -486,11 +487,11 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		this.app.use((req, res, next) => {
 			router.stack = [];
-			this.layers.routes.forEach(({ method, path, handle }) => {
-				router.all(path, ...handle);
-			});
+			router.use(this.layers.express_router);
 			next();
 		}, router);
+
+		this.app.use(Middlewares.cors() as any);
 
 		this.app.use(this.routePath, this.express_router);
 

@@ -196,6 +196,39 @@ export const getRoutes = (router: Layer, basePath: string = "") => {
 	return [];
 };
 
+export const getRoutesExpress = (app: any, root: string = "") => {
+	try {
+		var route,
+			routes: any[] = [];
+
+		const stack = app._router?.stack || app?.stack || [];
+
+		stack.forEach(function (middleware: any) {
+			if (middleware.route) {
+				// routes registered directly on the app
+				routes.push(middleware.route);
+			} else if (middleware.name === "router") {
+				// router middleware
+				routes.push(...getRoutesExpress(middleware.handle, regexpToPath(middleware.regexp)));
+				// middleware.handle.stack.forEach(function (handler: any) {
+				// 	route = handler.route;
+				// 	route && routes.push(route);
+				// });
+			}
+		});
+
+		return routes.map((route) => {
+			let str = route.path.split("/").map((v: any) => (/^:[\S]+/gi.test(v) ? `\${${v.replace(":", "")}}` : v));
+			route.path = root + str.join("/");
+			return route;
+		});
+	} catch (e) {
+		console.log(e);
+	}
+
+	return [];
+};
+
 /**
  * Envolve um middleware Express com um manipulador de erros (try-catch) centralizado.
  * Se o handler lançar um erro, esta função o captura, formata uma resposta JSON padronizada

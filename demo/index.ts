@@ -123,3 +123,5 @@ app.defineSwagger({
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}`);
 });
+
+// console.log(JSON.stringify(app.layers, null, 2));

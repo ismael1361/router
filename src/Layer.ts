@@ -1,6 +1,7 @@
 import { HandlerFC, ILayer, IRoute, MiddlewareFC, MiddlewareFCDoc, NextFunction, RouterMethods, Request, Response } from "./type";
 import { getDocHandles, joinDocs, joinPath } from "./utils";
 import { EventEmitter } from "@ismael1361/utils";
+import express, { Express, Router as ExpressRouter } from "express";
 
 /**
  * @internal
@@ -222,6 +223,31 @@ export class Layer extends Array<ILayer> {
 		}
 
 		return routes;
+	}
+
+	get express_router() {
+		const router: ExpressRouter = express.Router();
+
+		for (const layer of this) {
+			switch (layer.type) {
+				case "middleware": {
+					const handles = layer.handle || [];
+					router.use(...handles);
+					break;
+				}
+				case "route": {
+					router.use(joinPath(layer.path || ""), (layer.route as Layer).express_router);
+					break;
+				}
+				default: {
+					const handles = layer.handle || [];
+					router[layer.method](layer.path || "", ...handles);
+					break;
+				}
+			}
+		}
+
+		return router;
 	}
 
 	/**
