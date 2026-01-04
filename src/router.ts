@@ -484,18 +484,26 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	listen(handle: any, listeningListener?: (error?: Error) => void): http.Server;
 	listen(...args: any[]) {
 		const router: ExpressRouter = express.Router();
+		router.use(this.layers.express_router);
+
+		let time: NodeJS.Timeout | undefined = undefined;
 
 		this.app.use((req, res, next) => {
-			router.stack = [];
-			router.use(this.layers.express_router);
+			clearTimeout(time);
+			time = setTimeout(() => {
+				router.stack = [];
+				router.use(this.layers.express_router);
+			}, 1000);
 			next();
 		}, router);
 
-		this.app.use(Middlewares.cors() as any);
+		const routerExtra: ExpressRouter = express.Router();
 
-		this.app.use(this.routePath, this.express_router);
+		routerExtra.use(Middlewares.cors() as any);
 
-		this.app.get("/.well-known/appspecific/com.chrome.devtools.json", (req, res) => {
+		routerExtra.use(this.routePath, this.express_router);
+
+		routerExtra.get("/.well-known/appspecific/com.chrome.devtools.json", (req, res) => {
 			const projectRoot = path.resolve(__dirname);
 			const workspaceUuid = uuidv4("-"); // Gera um UUID v4
 			res.json({
@@ -506,7 +514,10 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			});
 		});
 
+		this.app.use(routerExtra);
+
 		this.app.use(
+			Middlewares.cors() as any,
 			createDynamicMiddleware((req, res, next) => {
 				throw new HandleError(`Not Found by ${req.method} ${req.url}`, "NOT_FOUND", 404);
 			}) as any,
