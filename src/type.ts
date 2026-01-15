@@ -191,3 +191,19 @@ export interface FilesRequest extends Request {
 	file: FileInfo;
 	files: FileInfo[];
 }
+
+export interface StacksOptions {
+	/** Caminho de rota de empilhamento dos logs */
+	path?: string;
+	/** Limite máximo de logs a serem empilhadas */
+	limit?: number;
+	/** Caminho base para o arquivo dos logs empilhados */
+	filePath?: string;
+}
+
+export interface APPAddress {
+	protocol: string;
+	host: string;
+	port: string;
+	url: string;
+}

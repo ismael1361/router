@@ -1,5 +1,6 @@
+import fs from "fs";
 import swaggerJSDoc from "swagger-jsdoc";
-import type { MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, SwaggerOptions } from "./type";
+import type { APPAddress, MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, StacksOptions, SwaggerOptions } from "./type";
 import { Handler, RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, getRoutesExpress, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
@@ -11,9 +12,11 @@ import { RequestMiddleware } from "./middleware";
 import { HandleError } from "./HandleError";
 import swaggerMarkdown from "./swagger-markdown";
 import path from "path";
-import { uuidv4 } from "@ismael1361/utils";
+import { uuidv4, EventEmitter } from "@ismael1361/utils";
 import OpenAPISnippet from "openapi-snippet";
 import * as Middlewares from "./Middlewares";
+
+Error.stackTraceLimit = Infinity;
 
 /**
  * A classe principal do roteador, que encapsula e aprimora o roteador do Express.
@@ -38,10 +41,30 @@ import * as Middlewares from "./Middlewares";
  *   console.log('Servidor rodando na porta 3000');
  * });
  */
-export class Router<Rq extends Request = Request, Rs extends Response = Response> {
+export class Router<Rq extends Request = Request, Rs extends Response = Response> extends EventEmitter<{
+	listen: [app: Router<Rq, Rs>, address: APPAddress];
+}> {
 	/** A instância subjacente do Express. */
 	public app: Express = express();
 	readonly express_router: ExpressRouter = express.Router();
+	private __address__: APPAddress = {
+		protocol: "http",
+		host: "",
+		port: "",
+		url: "",
+	};
+	private __registerStacks__ = {
+		register(level: "ERROR" | "WARN" | "INFO" = "INFO", ...reasons: Error[]) {},
+		error(...reasons: Error[]) {
+			this.register?.("ERROR", ...reasons);
+		},
+		warn(...reasons: Error[]) {
+			this.register?.("WARN", ...reasons);
+		},
+		info(...reasons: Error[]) {
+			this.register?.("INFO", ...reasons);
+		},
+	};
 
 	/**
 	 * @internal
@@ -49,7 +72,12 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {Layer} [layers=new Layer()] - A camada interna para gerenciar rotas e middlewares.
 	 */
 	constructor(readonly routePath: string = "", readonly layers: Layer = new Layer()) {
+		super();
 		this.layers.path = routePath;
+	}
+
+	get address() {
+		return this.__address__;
 	}
 
 	/**
@@ -351,7 +379,17 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 *
 	 * @param {SwaggerOptions} options - As opções de configuração.
 	 */
-	defineSwagger(options: SwaggerOptions) {
+	defineSwagger(options: SwaggerOptions): Promise<{
+		address: APPAddress;
+		markdownPath: string;
+		markdownUrl: string;
+		definitionPath: string;
+		definitionUrl: string;
+		swaggerUiPath: string;
+		swaggerUiUrl: string;
+		redocUiPath: string;
+		redocUiUrl: string;
+	}> {
 		const swaggerOptions = { ...options, path: options.path || "/doc", defaultResponses: options.defaultResponses || {} };
 
 		const path = swaggerOptions.path || "/doc";
@@ -392,6 +430,75 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		this.express_router.use(joinPath(path, "/redoc"), (...args: any) => {
 			redocUi.setup(swaggerSpec().options).apply(this.app, args);
+		});
+
+		return this.ready(() => {
+			return {
+				address: this.address,
+				markdownPath: joinPath(path, "/.md"),
+				markdownUrl: this.address.url + joinPath(path, "/.md"),
+				definitionPath: joinPath(path, "/swagger/definition.json"),
+				definitionUrl: this.address.url + joinPath(path, "/swagger/definition.json"),
+				swaggerUiPath: joinPath(path, "/swagger"),
+				swaggerUiUrl: this.address.url + joinPath(path, "/swagger"),
+				redocUiPath: joinPath(path, "/redoc"),
+				redocUiUrl: this.address.url + joinPath(path, "/redoc"),
+			};
+		});
+	}
+
+	defineStacks(options: StacksOptions = {}): Promise<{
+		address: APPAddress;
+		stacksPath: string;
+		stacksUrl: string;
+	}> {
+		const { path: stacksPath = "/stacks", limit = 100, filePath = "./stacks.log" } = options;
+
+		let timer: NodeJS.Timeout;
+
+		this.__registerStacks__.register = (level = "INFO", ...reasons) => {
+			const stack = reasons.map((reason) => (reason.stack || String(reason)).replace(/^(Error: )+/, "")).join("\n");
+			if (!fs.existsSync(path.resolve(filePath))) {
+				fs.writeFileSync(path.resolve(filePath), "");
+			}
+			fs.appendFileSync(path.resolve(filePath), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				const lines = fs.readFileSync(path.resolve(filePath), "utf-8").trim().split("\n");
+				if (lines.length > limit) {
+					const excess = lines.length - limit;
+					const updatedLines = lines.slice(excess);
+					fs.writeFileSync(path.resolve(filePath), updatedLines.join("\n") + "\n");
+				}
+			}, 1000 * 10);
+		};
+
+		process.on("unhandledRejection", this.__registerStacks__.error);
+		process.on("uncaughtException", this.__registerStacks__.error);
+		process.on("warning", this.__registerStacks__.warn);
+
+		const originalError = globalThis.console.error;
+		globalThis.console.error = (...args: any[]) => {
+			this.__registerStacks__.error(...args.map((args) => (args instanceof Error ? args : new Error("Error: " + args))));
+			originalError(...args);
+		};
+
+		const originalWarn = globalThis.console.warn;
+		globalThis.console.warn = (...args: any[]) => {
+			this.__registerStacks__.warn(...args.map((args) => (args instanceof Error ? args : new Error("Warn: " + args))));
+			originalWarn(...args);
+		};
+
+		const originalInfo = globalThis.console.info;
+		globalThis.console.info = (...args: any[]) => {
+			this.__registerStacks__.info(...args.map((args) => (args instanceof Error ? args : new Error("Info: " + args))));
+			originalInfo(...args);
+		};
+
+		this.express_router.get(joinPath(stacksPath), Middlewares.StacksController(filePath) as any);
+
+		return this.ready(() => {
+			return { address: this.address, stacksPath: joinPath(stacksPath), stacksUrl: this.address.url + joinPath(stacksPath) };
 		});
 	}
 
@@ -523,6 +630,37 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			}) as any,
 		);
 
-		return this.app.listen(...args);
+		const server = this.app.listen(...args);
+
+		server.once("listening", () => {
+			const addr = server.address() ?? "";
+
+			// 1. Verificar se é string (Pipe/Socket) ou Objeto (IP/Porta)
+			const bind = typeof addr === "string" ? addr : addr.address === "::" || addr.address === "0.0.0.0" ? "localhost" : addr.address;
+
+			// 2. Formatar a URL Base
+			const type = server.constructor.name;
+
+			const protocol = type === "SecureServer" || (type === "Server" && "addContext" in server) ? "https" : "http";
+			const port = typeof addr === "string" ? "" : `:${addr.port}`;
+
+			// Lidar com endereços IPv6 literais (precisam de colchetes [])
+			const host = bind.includes(":") && !bind.startsWith("[") ? `[${bind}]` : bind;
+
+			const baseUrl = `${protocol}://${host}${port}`;
+
+			this.__address__ = {
+				protocol,
+				host,
+				port,
+				url: baseUrl,
+			};
+
+			this.emit("listen", this, this.__address__);
+
+			this.prepared = true;
+		});
+
+		return server;
 	}
 }

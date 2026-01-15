@@ -2,6 +2,7 @@ import { Readable } from "stream";
 import { HandleError } from "./HandleError";
 import { FileInfo, FilesRequest, MiddlewareFC, Request, Response } from "./type";
 import BodyParser, { OptionsJson, Options, OptionsText, OptionsUrlencoded } from "body-parser";
+import fs from "fs";
 
 /**
  * Retorna um middleware que analisa corpos de requisição JSON.
@@ -247,3 +248,134 @@ export const files = (...allowedMimes: string[]): MiddlewareFC<FilesRequest> => 
 		next();
 	};
 };
+
+export const StacksController =
+	(filePath: string): MiddlewareFC<Request, Response> =>
+	(req, res, next) => {
+		const parseJSON = (json: string) => {
+			const regex = /(\w+)=("(?:[^"\\]|\\.)*"|\S+)/g;
+			const result: any = {};
+
+			let match: RegExpExecArray | null;
+
+			while ((match = regex.exec(json)) !== null) {
+				const key = match[1];
+				let value = match[2];
+
+				if (value.startsWith('"') && value.endsWith('"')) {
+					value = JSON.parse(value);
+				}
+
+				try {
+					value = JSON.parse(value);
+				} catch {
+					result[key] = value;
+				}
+			}
+
+			return result;
+		};
+
+		const stacks_file = fs.existsSync(filePath) ? fs.readFileSync(filePath).toString() : "";
+
+		const stacks = stacks_file
+			.trim()
+			.split("\n")
+			.slice(-50)
+			.map((stack) => {
+				const { time = "", level = "log", message = "" } = parseJSON(stack);
+
+				const [title, ...lines] = message.split("\n") as string[];
+
+				return `<div class="${level.toLowerCase()}"><h3>${title}</h3><p>${new Date(time).toLocaleString("pt-BR")}</p><div class="message"><pre><code>${lines.join(
+					"</code></pre><pre><code>",
+				)}</code></pre></div></div>`;
+			})
+			.reverse()
+			.join("\n");
+
+		res.setHeader("Content-Type", "text/html");
+
+		res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacks</title>
+    <style>
+    body{
+   --background: #212121;
+   background: var(--background);
+   color: #fafafa;
+}
+
+body > .main{
+   position: relative;
+   width: 90%;
+   max-width: 800px;
+   margin: 20px auto;
+}
+
+body > .main::before {
+    content: "";
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    height: 100vh;
+    background-image: linear-gradient(to top, var(--background), transparent);
+    z-index: 1;
+}
+
+body > .main > div{
+   --color: #424242;
+   width: 100%;
+   margin: 20px auto;
+   border: 2px solid var(--color);
+   border-radius: 18px;
+   box-sizing: border-box;
+   background-image: linear-gradient(rgba(0, 0, 0, .5));
+   background-color: var(--color);
+   overflow: hidden;
+   z-index: 0;
+}
+
+body > .main > div.error{
+   --color: #b71c1c;
+}
+
+body > .main > div.warn{
+   --color: #e65100;
+}
+
+body > .main > div.info{
+   --color: #01579b;
+}
+
+body > .main > div > h3 {
+   margin: 0px;
+   padding: 1rem 1rem 0px;
+}
+
+body > .main > div > p {
+   margin: 0px;
+   padding: 0.4rem 1rem 1rem;
+   opacity: .8;
+   font-style: italic;
+}
+
+body > .main > div > .message{
+   overflow-x: auto;
+   padding: 1rem;
+   background: rgba(0, 0, 0, .5);
+   border-top: 2px solid var(--color);
+   font-size: .6rem;
+}
+    </style>
+</head>
+<body><div class="main">${stacks}</div></body>
+</html>
+`);
+	};

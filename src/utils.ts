@@ -272,8 +272,9 @@ export function tryHandler(handler: MiddlewareFC<any, any>) {
 					if (["ERROR", "WARN", "INFO"].includes(level)) {
 						const stack = (error as any).stack || error;
 						if (level === "ERROR") console.error(error);
-						if (level === "WARN") console.warn(error);
-						fs.appendFileSync(path.join(process.cwd(), "stacks.log"), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
+						else if (level === "WARN") console.warn(error);
+						else console.info(error);
+						// fs.appendFileSync(path.join(process.cwd(), "stacks.log"), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
 					}
 				}
 		  }

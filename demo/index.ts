@@ -80,6 +80,7 @@ userRouter.post("/profile").handler(post_profile);
 userRouter
 	.get("/teste")
 	.handler((req, res) => {
+		throw new Error("Teste de erro");
 		res.json({});
 	})
 	.doc({
@@ -118,10 +119,21 @@ app.defineSwagger({
 		403: { description: "Acesso negado" },
 		500: { description: "Erro interno do servidor" },
 	},
+}).then(({ definitionUrl, swaggerUiUrl, redocUiUrl, markdownUrl }) => {
+	console.log("Swagger definition available at:", definitionUrl);
+	console.log("Swagger UI available at:", swaggerUiUrl);
+	console.log("Redoc UI available at:", redocUiUrl);
+	console.log("Markdown documentation available at:", markdownUrl);
 });
 
-app.listen(port, () => {
-	console.log(`Example app listening on port ${port}`);
+app.defineStacks().then(({ stacksUrl }) => {
+	console.log("Stacks available at:", stacksUrl);
 });
+
+app.on("listen", () => {
+	console.log("App is listening at:", app.address.url);
+});
+
+app.listen(port);
 
 // console.log(JSON.stringify(app.layers, null, 2));
