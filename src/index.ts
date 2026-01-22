@@ -116,6 +116,30 @@ export function route<Req extends Request = Request, Res extends Response = Resp
 }
 
 /**
+ * Cria uma nova instância do Router com um prefixo de versão na rota.
+ * Útil para versionar APIs de forma limpa (ex: '/v1', '/v2').
+ *
+ * @template Req - Tipo de Request base para o roteador.
+ * @template Res - Tipo de Response base para o roteador.
+ * @param {number} version - O número da versão para o prefixo da rota.
+ * @returns {Router<Req, Res>} Uma nova instância do Router com o prefixo de versão definido.
+ *
+ * @example
+ * import { routeVersion, create } from '@ismael1361/router';
+ *
+ * const apiRouter = create();
+ *
+ * const v1Router = routeVersion(1); // Todas as rotas aqui começarão com /v1
+ *
+ * v1Router.get('/users').handler((req, res) => { ... }); // Acessível em GET /v1/users
+ *
+ * apiRouter.by(v1Router); // Anexa o grupo de rotas versionadas ao roteador principal
+ */
+export function routeVersion<Req extends Request = Request, Res extends Response = Response>(version: number): Router<Req, Res> {
+	return new Router<Req, Res>(`/v${version}`);
+}
+
+/**
  * Um helper para criar um objeto de documentação OpenAPI de forma limpa.
  * Ele separa a operação principal dos componentes e os mescla em um único objeto.
  *

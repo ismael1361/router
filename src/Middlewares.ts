@@ -106,6 +106,12 @@ type CorsOptionsMethods = "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH
 
 interface CorsOptions {
 	/**
+	 * Define quais origens são permitidas para requisições cross-origin.
+	 * - Use "*" para permitir todas as origens.
+	 * - Use uma URL específica (ex: "https://example.com") para restringir a uma origem.
+	 */
+	allowOrigin?: string;
+	/**
 	 * Informa quais métodos HTTP são permitidos quando a requisição é cross-origin.
 	 * - OPTIONS é essencial para preflight requests (verificação prévia feita pelo navegador).
 	 * - Sem esse header, o navegador bloqueia métodos não listados.
@@ -143,7 +149,34 @@ interface CorsOptions {
 	exposeHeaders?: string[] | string;
 }
 
-export const cors = (allowOrigin: string = "*", options: CorsOptions = {}): MiddlewareFC<Request, Response> => {
+/**
+ * Middleware para configurar CORS (Cross-Origin Resource Sharing).
+ * Permite controlar quais domínios podem acessar a API, quais métodos HTTP são permitidos, headers, etc.
+ *
+ * @param {string} allowOrigin - Origem permitida (ex: "*", "https://site.com").
+ * @param {CorsOptions} options - Opções de configuração do CORS.
+ * @returns {MiddlewareFC<Request, Response>} Middleware configurado.
+ *
+ * @example
+ * // Permitir qualquer origem (padrão se nenhuma opção for passada ou passar apenas "*")
+ * app.middleware(Middlewares.cors({ allowOrigin: "*" }));
+ *
+ * // Permitir origem específica com opções
+ * app.middleware(Middlewares.cors("https://meusite.com", {
+ *   allowedMethods: ["GET", "POST"],
+ *   credentials: true
+ * }));
+ *
+ * // Passando apenas objeto de opções
+ * app.middleware(Middlewares.cors({
+ *   allowOrigin: "https://api.meusite.com",
+ *   exposeHeaders: ["Content-Length"]
+ * }));
+ */
+export function cors(allowOrigin?: string, options?: CorsOptions): MiddlewareFC<Request, Response>;
+export function cors(options?: CorsOptions): MiddlewareFC<Request, Response>;
+export function cors(allowOrigin: string | CorsOptions = "*", options: CorsOptions = {}): MiddlewareFC<Request, Response> {
+	options = { ...(typeof allowOrigin === "string" ? { allowOrigin } : allowOrigin), ...options };
 	return (req, res, next) => {
 		// Configuração mais robusta de CORS
 		const origin = req.headers.origin;
@@ -151,7 +184,7 @@ export const cors = (allowOrigin: string = "*", options: CorsOptions = {}): Midd
 		options = { allowedMethods: "*", allowedHeaders: "*", credentials: true, exposeHeaders: "*", ...options };
 
 		// Definir headers CORS
-		res.setHeader("Access-Control-Allow-Origin", allowOrigin || origin || "*");
+		res.setHeader("Access-Control-Allow-Origin", options.allowOrigin || origin || "*");
 
 		if (options.allowedMethods) res.setHeader("Access-Control-Allow-Methods", Array.isArray(options.allowedMethods) ? options.allowedMethods.join(",") : options.allowedMethods);
 
@@ -168,7 +201,7 @@ export const cors = (allowOrigin: string = "*", options: CorsOptions = {}): Midd
 
 		next();
 	};
-};
+}
 
 /**
  * Middleware para analisar arquivos de uma solicitação.
