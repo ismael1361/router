@@ -71,7 +71,10 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	 * @param {string} [routePath=""] - O prefixo de caminho para este roteador.
 	 * @param {Layer} [layers=new Layer()] - A camada interna para gerenciar rotas e middlewares.
 	 */
-	constructor(readonly routePath: string = "", readonly layers: Layer = new Layer()) {
+	constructor(
+		readonly routePath: string = "",
+		readonly layers: Layer = new Layer(),
+	) {
 		super();
 		this.layers.path = routePath;
 	}
@@ -336,24 +339,28 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		for (const path in definition.paths) {
 			for (const method in definition.paths[path]) {
-				const generatedCode = OpenAPISnippet.getEndpointSnippets(
-					{
-						servers: [
-							{
-								url: "http://[hostname]",
-							},
-						],
-						...definition,
-					},
-					path,
-					method,
-					Object.keys(targets),
-				);
-				definition.paths[path][method]["x-codeSamples"] = [];
+				try {
+					const generatedCode = OpenAPISnippet.getEndpointSnippets(
+						{
+							servers: [
+								{
+									url: "http://[hostname]",
+								},
+							],
+							...definition,
+						},
+						path,
+						method,
+						Object.keys(targets),
+					);
+					definition.paths[path][method]["x-codeSamples"] = [];
 
-				for (const snippetIdx in generatedCode.snippets) {
-					const snippet = generatedCode.snippets[snippetIdx];
-					definition.paths[path][method]["x-codeSamples"][snippetIdx] = { lang: targets[snippet.id], label: snippet.title, source: snippet.content };
+					for (const snippetIdx in generatedCode.snippets) {
+						const snippet = generatedCode.snippets[snippetIdx];
+						definition.paths[path][method]["x-codeSamples"][snippetIdx] = { lang: targets[snippet.id], label: snippet.title, source: snippet.content };
+					}
+				} catch (e) {
+					throw new Error(`Failed to generate code samples for ${method.toUpperCase()} ${path}: ${e}`);
 				}
 			}
 		}
