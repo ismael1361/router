@@ -571,6 +571,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		return this;
 	}
 
+	beforeListen: ((server: http.Server) => void) | undefined = undefined;
+
 	/**
 	 * Inicia o servidor HTTP.
 	 * Este método deve ser chamado por último, após todas as rotas e middlewares terem sido definidos.
@@ -597,6 +599,12 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 	listen(path: string, callback?: (error?: Error) => void): http.Server;
 	listen(handle: any, listeningListener?: (error?: Error) => void): http.Server;
 	listen(...args: any[]) {
+		const server = http.createServer(this.app);
+
+		if (this.beforeListen) {
+			this.beforeListen(server);
+		}
+
 		const router: ExpressRouter = express.Router();
 		router.use(this.layers.express_router);
 
@@ -637,8 +645,6 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 			}) as any,
 		);
 
-		const server = this.app.listen(...args);
-
 		server.once("listening", () => {
 			const addr = server.address() ?? "";
 
@@ -667,6 +673,8 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 			this.prepared = true;
 		});
+
+		server.listen(...args);
 
 		return server;
 	}
