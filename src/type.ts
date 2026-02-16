@@ -205,7 +205,7 @@ export interface StackLog {
 	source?: string;
 	statusCode: number;
 	duration: number;
-	meta?: Record<string, any>;
+	meta?: string;
 }
 
 export interface StacksOptions {

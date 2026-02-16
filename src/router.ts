@@ -472,7 +472,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 						stack += `level=${level} `;
 						stack += `name="Log" `;
 						stack += `message=${JSON.stringify(reason)} `;
-						stack += `source=${JSON.stringify(reason)} `;
+						stack += `source="String" `;
 						stack += `statusCode=0 duration=0 meta=${JSON.stringify(reason)}`;
 						return stack;
 					}
@@ -483,10 +483,10 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 						stack += `level=${"level" in reason ? reason.level : level} `;
 						stack += `name=${JSON.stringify("name" in reason ? reason.name : "Error")} `;
 						stack += `message=${JSON.stringify("message" in reason ? reason.message : reason)} `;
-						stack += `source=${JSON.stringify("stack" in reason ? reason.stack : reason)} `;
+						stack += `source="Error" `;
 						stack += `statusCode=${"code" in reason ? reason.code : 0} `;
 						stack += `duration=${"duration" in reason ? reason.duration : 0} `;
-						stack += `meta=${JSON.stringify(reason)}`;
+						stack += `meta=${JSON.stringify("stack" in reason ? reason.stack : reason)}`;
 						return stack;
 					}
 
@@ -540,7 +540,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 						source: arg.source,
 						statusCode: arg.code,
 						duration: arg.duration,
-						meta: arg.meta,
+						meta: "stack" in arg ? arg.stack : (arg.meta ?? arg),
 					};
 				} else if (arg instanceof Error) {
 					return {
@@ -548,10 +548,10 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 						level,
 						name: arg.name,
 						message: arg.message,
-						source: arg.stack,
+						source: "Error",
 						statusCode: 500,
 						duration: 0,
-						meta: arg,
+						meta: "stack" in arg ? arg.stack : arg,
 					};
 				} else if (typeof arg === "object") {
 					return {
@@ -559,10 +559,10 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 						level: "level" in arg ? arg.level : level,
 						name: "name" in arg ? arg.name : "Log",
 						message: "message" in arg ? arg.message : JSON.stringify(arg),
-						source: "stack" in arg ? arg.stack : JSON.stringify(arg),
+						source: "source" in arg ? arg.source : "Object",
 						statusCode: "code" in arg ? arg.code : 0,
 						duration: "duration" in arg ? arg.duration : 0,
-						meta: arg,
+						meta: "stack" in arg ? arg.stack : (arg?.meta ?? arg),
 					};
 				}
 
@@ -629,7 +629,7 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 				source: "",
 				statusCode: 0,
 				duration: 0,
-				meta: {},
+				meta: "",
 			};
 
 			let match;
@@ -637,9 +637,41 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 			while ((match = pairRegex.exec(record)) !== null) {
 				const key = match[1];
-				// Se o grupo 2 (aspas) estiver presente, usa ele; senão usa o grupo 3
-				const value = match[2] !== undefined ? match[2] : match[3];
-				(entry as any)[key] = value;
+				try {
+					switch (key) {
+						case "time":
+							entry.time = new Date(match[2] || match[3]);
+							continue;
+						case "level":
+							entry.level = (match[2] || match[3]) as any;
+							continue;
+						case "name":
+							entry.name = match[2] || match[3] || "";
+							continue;
+						case "message":
+							entry.message = match[2] || match[3] || "";
+							continue;
+						case "source":
+							entry.source = match[2] || match[3] || "";
+							continue;
+						case "statusCode":
+							entry.statusCode = Number(match[2] || match[3] || 0);
+							continue;
+						case "duration":
+							entry.duration = Number(match[2] || match[3] || 0);
+							continue;
+						case "meta":
+							try {
+								entry.meta = match[2] || match[3] || "";
+							} catch {
+								entry.meta = "";
+							}
+							continue;
+						default:
+							(entry as any)[key] = (match[2] !== undefined ? match[2] : match[3]) ?? (entry as any)[key];
+							continue;
+					}
+				} catch {}
 			}
 
 			result.push(entry);
