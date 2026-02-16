@@ -98,6 +98,8 @@ const codes = {
  * console.log(genericError.level); // "ERROR"
  */
 export class HandleError extends Error {
+	readonly time = new Date();
+
 	/**
 	 * @param {string} message A mensagem de erro principal, legível para humanos.
 	 * @param {string} [name="DEFAULT"] Um nome/código para categorizar o erro (ex: "VALIDATION_ERROR").
@@ -109,8 +111,14 @@ export class HandleError extends Error {
 		readonly name: string = "DEFAULT",
 		readonly cause?: keyof typeof codes | HandleError | Error | string | object,
 		readonly level: "ERROR" | "WARN" | "INFO" | "NONE" = "ERROR",
+		readonly source?: string,
+		readonly duration: number = 0,
 	) {
 		super(message);
+	}
+
+	get meta(): HandleError | Error | string | object | { code: number; message: string } {
+		return typeof this.cause === "number" ? { code: this.cause, message: codes[this.cause] } : !this.cause ? this.message : this.cause;
 	}
 
 	/** Retorna o código de status HTTP associado ao erro. Extraído da propriedade `cause` se for um número, caso contrário, o padrão é 200. */

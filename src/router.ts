@@ -1,6 +1,6 @@
 import fs from "fs";
 import swaggerJSDoc from "swagger-jsdoc";
-import type { APPAddress, MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, StacksOptions, SwaggerOptions } from "./type";
+import type { APPAddress, MiddlewareCallback, MiddlewareFCDoc, NextFunction, Request, Response, StackLog, StacksOptions, SwaggerOptions } from "./type";
 import { Handler, RequestHandler } from "./handler";
 import { createDynamicMiddleware, getRoutes, getRoutesExpress, joinObject, joinPath, omit } from "./utils";
 import { Layer } from "./Layer";
@@ -54,14 +54,14 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		url: "",
 	};
 	private __registerStacks__ = {
-		register(level: "ERROR" | "WARN" | "INFO" = "INFO", ...reasons: Error[]) {},
-		error(...reasons: Error[]) {
+		register(level: "ERROR" | "WARN" | "INFO" = "INFO", ...reasons: StackLog[]) {},
+		error(...reasons: StackLog[]) {
 			this.register?.("ERROR", ...reasons);
 		},
-		warn(...reasons: Error[]) {
+		warn(...reasons: StackLog[]) {
 			this.register?.("WARN", ...reasons);
 		},
-		info(...reasons: Error[]) {
+		info(...reasons: StackLog[]) {
 			this.register?.("INFO", ...reasons);
 		},
 	};
@@ -459,16 +459,61 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		stacksPath: string;
 		stacksUrl: string;
 	}> {
-		const { path: stacksPath = "/stacks", limit = 100, filePath = "./stacks.log" } = options;
+		const { path: stacksPath = "/stacks", limit = 100, filePath = "./stacks.log", beforeStack } = options;
 
 		let timer: NodeJS.Timeout;
 
 		this.__registerStacks__.register = (level = "INFO", ...reasons) => {
-			const stack = reasons.map((reason) => (reason.stack || String(reason)).replace(/^(Error: )+/, "")).join("\n");
+			const stack: string = (beforeStack?.(...reasons) || reasons)
+				.map((reason) => {
+					if (typeof reason === "string") {
+						let stack: string = "";
+						stack += `time=${new Date().toISOString()} `;
+						stack += `level=${level} `;
+						stack += `name="Log" `;
+						stack += `message=${JSON.stringify(reason)} `;
+						stack += `source=${JSON.stringify(reason)} `;
+						stack += `statusCode=0 duration=0 meta=${JSON.stringify(reason)}`;
+						return stack;
+					}
+
+					if (reason instanceof Error) {
+						let stack: string = "";
+						stack += `time=${new Date().toISOString()} `;
+						stack += `level=${"level" in reason ? reason.level : level} `;
+						stack += `name=${JSON.stringify("name" in reason ? reason.name : "Error")} `;
+						stack += `message=${JSON.stringify("message" in reason ? reason.message : reason)} `;
+						stack += `source=${JSON.stringify("stack" in reason ? reason.stack : reason)} `;
+						stack += `statusCode=${"code" in reason ? reason.code : 0} `;
+						stack += `duration=${"duration" in reason ? reason.duration : 0} `;
+						stack += `meta=${JSON.stringify(reason)}`;
+						return stack;
+					}
+
+					let stack: string = "";
+
+					for (const key in reason) {
+						if (Object.prototype.hasOwnProperty.call(reason, key)) {
+							const value: any = (reason as any)[key];
+							stack += `${key}=`;
+							if (typeof value === "number") {
+								stack += value + " ";
+							} else if (value instanceof Date) {
+								stack += value.toISOString() + " ";
+							} else {
+								stack += JSON.stringify(value) + " ";
+							}
+						}
+					}
+
+					return stack.trim();
+				})
+				.join("\n");
+
 			if (!fs.existsSync(path.resolve(filePath))) {
 				fs.writeFileSync(path.resolve(filePath), "");
 			}
-			fs.appendFileSync(path.resolve(filePath), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
+			fs.appendFileSync(path.resolve(filePath), stack + "\n");
 			clearTimeout(timer);
 			timer = setTimeout(() => {
 				const lines = fs.readFileSync(path.resolve(filePath), "utf-8").trim().split("\n");
@@ -484,21 +529,71 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		process.on("uncaughtException", this.__registerStacks__.error);
 		process.on("warning", this.__registerStacks__.warn);
 
+		const processArgs = (level = "INFO", ...args: any[]): StackLog[] => {
+			return args.map((arg) => {
+				if (arg instanceof HandleError) {
+					return {
+						time: arg.time,
+						level: arg.level === "NONE" ? level : arg.level,
+						name: arg.name,
+						message: arg.message,
+						source: arg.source,
+						statusCode: arg.code,
+						duration: arg.duration,
+						meta: arg.meta,
+					};
+				} else if (arg instanceof Error) {
+					return {
+						time: new Date(),
+						level,
+						name: arg.name,
+						message: arg.message,
+						source: arg.stack,
+						statusCode: 500,
+						duration: 0,
+						meta: arg,
+					};
+				} else if (typeof arg === "object") {
+					return {
+						time: "time" in arg ? arg.time : new Date(),
+						level: "level" in arg ? arg.level : level,
+						name: "name" in arg ? arg.name : "Log",
+						message: "message" in arg ? arg.message : JSON.stringify(arg),
+						source: "stack" in arg ? arg.stack : JSON.stringify(arg),
+						statusCode: "code" in arg ? arg.code : 0,
+						duration: "duration" in arg ? arg.duration : 0,
+						meta: arg,
+					};
+				}
+
+				return {
+					time: new Date(),
+					level,
+					name: "Log",
+					message: String(arg),
+					source: String(arg),
+					statusCode: 0,
+					duration: 0,
+					meta: arg,
+				};
+			});
+		};
+
 		const originalError = globalThis.console.error;
 		globalThis.console.error = (...args: any[]) => {
-			this.__registerStacks__.error(...args.map((args) => (args instanceof Error ? args : new Error("Error: " + args))));
+			this.__registerStacks__.error(...processArgs("ERROR", ...args));
 			originalError(...args);
 		};
 
 		const originalWarn = globalThis.console.warn;
 		globalThis.console.warn = (...args: any[]) => {
-			this.__registerStacks__.warn(...args.map((args) => (args instanceof Error ? args : new Error("Warn: " + args))));
+			this.__registerStacks__.warn(...processArgs("WARN", ...args));
 			originalWarn(...args);
 		};
 
 		const originalInfo = globalThis.console.info;
 		globalThis.console.info = (...args: any[]) => {
-			this.__registerStacks__.info(...args.map((args) => (args instanceof Error ? args : new Error("Info: " + args))));
+			this.__registerStacks__.info(...processArgs("INFO", ...args));
 			originalInfo(...args);
 		};
 
@@ -506,6 +601,22 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 
 		return this.ready(() => {
 			return { address: this.address, stacksPath: joinPath(stacksPath), stacksUrl: this.address.url + joinPath(stacksPath) };
+		});
+	}
+
+	getStacks(): StackLog[] {
+		const filePath = "./stacks.log";
+		if (!fs.existsSync(path.resolve(filePath))) {
+			return [];
+		}
+		const lines = fs.readFileSync(path.resolve(filePath), "utf-8").trim().split("\n");
+		return lines.map((line) => {
+			const log: any = {};
+			line.split(" ").forEach((part) => {
+				const [key, ...rest] = part.split("=");
+				log[key] = rest.join("=");
+			});
+			return log;
 		});
 	}
 

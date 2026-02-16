@@ -18,8 +18,8 @@ type MergeObjects<A, B> = {
 			? A[K] | B[K] // se ambos definem a chave, junta como union (você pode trocar por A[K] & B[K])
 			: A[K]
 		: K extends keyof B
-		? B[K]
-		: never;
+			? B[K]
+			: never;
 };
 
 // prefere um lado quando o outro é `any`, caso contrário mescla
@@ -34,8 +34,12 @@ export type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 export type RouterMethods = "get" | "post" | "put" | "delete" | "patch" | "options" | "head" | "all" | "use";
 
-export interface Request<ReqQuery extends string = any, ReqBody = any, ReqParams extends string = any, ResBody = any>
-	extends ExpressRequest<Record<ReqParams, any>, ResBody, Identity<ReqBody>, Record<ReqQuery, any>> {
+export interface Request<ReqQuery extends string = any, ReqBody = any, ReqParams extends string = any, ResBody = any> extends ExpressRequest<
+	Record<ReqParams, any>,
+	ResBody,
+	Identity<ReqBody>,
+	Record<ReqQuery, any>
+> {
 	clientIp: string;
 	body: Identity<ReqBody>;
 	params: Record<ReqParams, any>;
@@ -49,11 +53,12 @@ export interface Response<ResBody = any, LocalsObj extends Record<string, any> =
 	locals: LocalsObj & Locals;
 }
 
-export type ExpressRequestHandler<Rq, Rs> = Rq extends ExpressRequest<infer P, any, infer ReqBody, infer ReqQuery, any>
-	? Rs extends ExpressResponse<infer ResBody, infer LocalsObj>
-		? RequestHandler<P, ResBody, ReqBody, ReqQuery, LocalsObj>
-		: never
-	: never;
+export type ExpressRequestHandler<Rq, Rs> =
+	Rq extends ExpressRequest<infer P, any, infer ReqBody, infer ReqQuery, any>
+		? Rs extends ExpressResponse<infer ResBody, infer LocalsObj>
+			? RequestHandler<P, ResBody, ReqBody, ReqQuery, LocalsObj>
+			: never
+		: never;
 
 /**
  * Define a estrutura da documentação Swagger/OpenAPI que pode ser anexada a um middleware.
@@ -192,6 +197,17 @@ export interface FilesRequest extends Request {
 	files: FileInfo[];
 }
 
+export interface StackLog {
+	time: Date;
+	level: "error" | "warn" | "info" | "debug";
+	name: string;
+	message: string;
+	source?: string;
+	statusCode: number;
+	duration: number;
+	meta?: Record<string, any>;
+}
+
 export interface StacksOptions {
 	/** Caminho de rota de empilhamento dos logs */
 	path?: string;
@@ -199,6 +215,8 @@ export interface StacksOptions {
 	limit?: number;
 	/** Caminho base para o arquivo dos logs empilhados */
 	filePath?: string;
+
+	beforeStack?(...stacks: StackLog[]): Array<StackLog | string | Error>;
 }
 
 export interface APPAddress {
