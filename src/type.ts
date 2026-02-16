@@ -199,7 +199,7 @@ export interface FilesRequest extends Request {
 
 export interface StackLog {
 	time: Date;
-	level: "error" | "warn" | "info" | "debug";
+	level: "ERROR" | "WARN" | "INFO" | "DEBUG";
 	name: string;
 	message: string;
 	source?: string;

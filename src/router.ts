@@ -609,15 +609,43 @@ export class Router<Rq extends Request = Request, Rs extends Response = Response
 		if (!fs.existsSync(path.resolve(filePath))) {
 			return [];
 		}
-		const lines = fs.readFileSync(path.resolve(filePath), "utf-8").trim().split("\n");
-		return lines.map((line) => {
-			const log: any = {};
-			line.split(" ").forEach((part) => {
-				const [key, ...rest] = part.split("=");
-				log[key] = rest.join("=");
-			});
-			return log;
-		});
+
+		const records = fs
+			.readFileSync(path.resolve(filePath), "utf-8")
+			.trim()
+			.split(/\n(?=time=)/);
+		const result: StackLog[] = [];
+
+		const pairRegex = /(\w+)=(?:"((?:\\[^]|[^"\\])*)"|(\S+))/g;
+
+		for (const record of records) {
+			if (!record.trim()) continue;
+
+			const entry: StackLog = {
+				time: new Date(),
+				level: "INFO",
+				name: "",
+				message: "",
+				source: "",
+				statusCode: 0,
+				duration: 0,
+				meta: {},
+			};
+
+			let match;
+			pairRegex.lastIndex = 0; // reinicia a busca para cada registro
+
+			while ((match = pairRegex.exec(record)) !== null) {
+				const key = match[1];
+				// Se o grupo 2 (aspas) estiver presente, usa ele; senão usa o grupo 3
+				const value = match[2] !== undefined ? match[2] : match[3];
+				(entry as any)[key] = value;
+			}
+
+			result.push(entry);
+		}
+
+		return result;
 	}
 
 	/**
