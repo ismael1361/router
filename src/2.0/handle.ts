@@ -10,7 +10,9 @@ export interface IHandler<Rq extends Request = Request, Rs extends Response = Re
 
 	router: express.Router;
 
-	handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs>): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
+	handle<Req extends Request = Request, Res extends Response = Response>(
+		fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>,
+	): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 
 	__doc__?: MiddlewareFCDoc;
 
@@ -33,7 +35,7 @@ export const defineRoute = <Rq extends Request = Request, Rs extends Response = 
 		get router() {
 			return router;
 		},
-		handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs>) {
+		handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>) {
 			const layer = Layer("/", {}, fn);
 			layer.method = method;
 			if ("methods" in route) {
