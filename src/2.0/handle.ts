@@ -35,7 +35,9 @@ export const defineRoute = <Rq extends Request = Request, Rs extends Response = 
 	};
 
 	const rootHandler: RequestHandler = function (req, res, next) {
-		return router(req, res, next);
+		const chainHandler = express.Router();
+		chainHandler.route(path).stack = innerRouter.stack;
+		return chainHandler(req, res, next);
 	};
 
 	return Object.assign(rootHandler, props) as unknown as IHandler<Rq, Rs> & { router: express.Router };
