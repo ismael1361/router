@@ -1,18 +1,28 @@
-import { create } from "../src/2.0";
+import { create, Request } from "../src/2.0";
 
 const app = create();
 const port = 8080;
 
+interface AuthRequest extends Request<"userId" | "id", { user?: { id: string; roles: string[] } }> {
+	user: { id: string; roles: string[] };
+}
+
 app.get("/hello/:username")
+	.handle((req: AuthRequest, res, next) => {
+		const { user } = req;
+		console.log("Console:", `Hello, ${user.id}!`);
+		next();
+	})
 	.handle<{
-		name: string;
+		id: string;
 	}>((req, res, next) => {
-		const { name } = req.body;
-		console.log("Console:", `Hello, ${name}!`);
+		const {} = req.params;
+		const { name, id } = req.body;
+		console.log("Console:", `Hello, ${name}! Your ID is ${id}.`);
 		next();
 	})
 	.handle((req, res) => {
-		const { name } = req.body;
+		const { name, id } = req.body;
 		res.send(`Hello, ${name}!`);
 	});
 
