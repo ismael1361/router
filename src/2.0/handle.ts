@@ -5,6 +5,8 @@ import type { Methods, Request, Response, RequestHandler, JoinRequest, JoinRespo
 export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> {
 	(req: Rq, res: Rs, next: NextFunction): unknown;
 
+	router: express.Router;
+
 	handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs>): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 }
 
@@ -40,7 +42,7 @@ export const defineRoute = <Rq extends Request = Request, Rs extends Response = 
 		return chainHandler(req, res, next);
 	};
 
-	return Object.assign(rootHandler, props) as unknown as IHandler<Rq, Rs> & { router: express.Router };
+	return Object.assign(rootHandler, props) as unknown as IHandler<Rq, Rs>;
 };
 
 export const defineMiddleware = <Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req, Res>): IHandler<Req, Res> => {
