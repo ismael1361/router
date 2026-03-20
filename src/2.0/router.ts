@@ -16,7 +16,11 @@ type IsBad<T> = 0 extends 1 & T
 					? true // Detecta String Vazia
 					: false;
 
-export type Join<A, B> = IsBad<A> extends true ? B : IsBad<B> extends true ? A : A & B;
+type Join<A, B> = IsBad<A> extends true ? B : IsBad<B> extends true ? A : A & B;
+
+type Prettify<T> = {
+	[K in keyof T]: T[K];
+} & {};
 
 export type ExtractRouteParameters<Path extends string> = Extract<keyof core.RouteParameters<Path>, string>;
 
