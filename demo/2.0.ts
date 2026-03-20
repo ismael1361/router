@@ -7,23 +7,31 @@ interface AuthRequest extends Request<"userId" | "id", { user?: { id: string; ro
 	user: { id: string; roles: string[] };
 }
 
-app.get("/hello/:username")
-	.handle((req: AuthRequest, res, next) => {
+const authMiddleware = (req: AuthRequest, res: any, next: any) => {
+	const { user } = req;
+	console.log("Console:", `Hello, ${user.id}!`);
+	next();
+};
+
+app.get("/hello/:username/:id")
+	.handle(authMiddleware)
+	.handle<
+		Request<
+			any,
+			{
+				id: string;
+			}
+		>
+	>((req, res, next) => {
 		const { user } = req;
-		console.log("Console:", `Hello, ${user.id}!`);
-		next();
-	})
-	.handle<{
-		id: string;
-	}>((req, res, next) => {
-		const {} = req.params;
-		const { name, id } = req.body;
-		console.log("Console:", `Hello, ${name}! Your ID is ${id}.`);
+		const { id } = req.body;
+		console.log("Console:", `Hello, ${user.id}! Your ID is ${id}.`);
 		next();
 	})
 	.handle((req, res) => {
-		const { name, id } = req.body;
-		res.send(`Hello, ${name}!`);
+		const { username } = req.params;
+		const { id } = req.body;
+		res.send(`Hello, ${username}! Your ID is ${id}.`);
 	});
 
 app.listen(port, () => {
