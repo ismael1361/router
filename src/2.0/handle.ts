@@ -1,6 +1,9 @@
 import express from "express";
 import Layer from "router/lib/layer";
 import type { Methods, Request, Response, RequestHandler, JoinRequest, JoinResponse, NextFunction } from "./type";
+import type swaggerJSDoc from "swagger-jsdoc";
+import { MiddlewareFCDoc } from "../1.0";
+import { joinDocs, joinObject } from "./utils";
 
 export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> {
 	(req: Rq, res: Rs, next: NextFunction): unknown;
@@ -8,6 +11,10 @@ export interface IHandler<Rq extends Request = Request, Rs extends Response = Re
 	router: express.Router;
 
 	handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs>): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
+
+	__doc__?: MiddlewareFCDoc;
+
+	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IHandler<Rq, Rs>;
 }
 
 export const defineRoute = <Rq extends Request = Request, Rs extends Response = Response>(router: express.Router = express.Router(), method: Methods = "all", path: string = "/") => {
@@ -22,6 +29,7 @@ export const defineRoute = <Rq extends Request = Request, Rs extends Response = 
 	route.stack = []; // Clear the default handler added by Express
 
 	const props = {
+		__doc__: undefined as MiddlewareFCDoc | undefined,
 		get router() {
 			return router;
 		},
@@ -33,6 +41,12 @@ export const defineRoute = <Rq extends Request = Request, Rs extends Response = 
 			}
 			route.stack.push(layer);
 			return this as unknown as IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
+		},
+		doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components: swaggerJSDoc.Components = {}) {
+			const { components: comp = {}, ...op } = operation;
+
+			this.__doc__ = joinDocs(this.__doc__ ?? {}, { ...op, components: joinObject(comp, components) });
+			return this as unknown as IHandler<Rq, Rs>;
 		},
 	};
 

@@ -1,5 +1,6 @@
 import type * as core from "express-serve-static-core";
 import type { NextFunction } from "express";
+import type swaggerJSDoc from "swagger-jsdoc";
 
 // Utilitário para checar se o tipo é "sujo" (any, never ou unknown)
 type IsBad<T> = 0 extends 1 & T
@@ -69,3 +70,22 @@ export type Methods =
 	| "trace"
 	| "unlock"
 	| "unsubscribe";
+
+/**
+ * Define a estrutura da documentação Swagger/OpenAPI que pode ser anexada a um middleware.
+ * Permite que middlewares contribuam com definições de segurança, parâmetros, etc., que são
+ * mescladas com a documentação da rota final.
+ *
+ * @see MiddlewareFC
+ * @example
+ * const authMiddleware: MiddlewareFC = (req, res, next) => { next(); };
+ * authMiddleware.doc = {
+ *   security: [{ BearerAuth: [] }],
+ *   components: {
+ *     securitySchemes: { BearerAuth: { type: "http", scheme: "bearer" } }
+ *   }
+ * };
+ */
+export type MiddlewareFCDoc = swaggerJSDoc.Operation & {
+	components?: swaggerJSDoc.Components;
+};
