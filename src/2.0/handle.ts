@@ -1,70 +1,55 @@
 import express from "express";
-import Layer from "router/lib/layer";
-import type { Methods, Request, Response, RequestHandler, JoinRequest, JoinResponse, NextFunction } from "./type";
+import type { Request, Response, RequestHandler, JoinRequest, JoinResponse, NextFunction, IHandleDoc } from "./type";
 import type swaggerJSDoc from "swagger-jsdoc";
 import { MiddlewareFCDoc } from "../1.0";
-import { joinDocs, joinObject } from "./utils";
+import { joinObject, parseStack, rootStack } from "./utils";
+import nodePath from "path";
 
 export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> {
 	(req: Rq, res: Rs, next: NextFunction): unknown;
-
-	router: express.Router;
 
 	handle<Req extends Request = Request, Res extends Response = Response>(
 		fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>,
 	): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 
-	__doc__?: MiddlewareFCDoc;
-
 	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IHandler<Rq, Rs>;
 }
 
-export const defineRoute = <Rq extends Request = Request, Rs extends Response = Response>(router: express.Router = express.Router(), method: Methods = "all", path: string = "/") => {
-	const innerRouter = router.route(path);
-
-	const route = innerRouter[method].apply(innerRouter, [
-		(req: any, res: any, next: any) => {
-			next();
-		},
-	]); // Initialize the method on the route to ensure the layer is created
-
-	route.stack = []; // Clear the default handler added by Express
+export const middleware = <Rq extends Request = Request, Rs extends Response = Response>(fn: RequestHandler<Rq, Rs>) => {
+	const router = express.Router({ mergeParams: true });
 
 	const props = {
-		__doc__: undefined as MiddlewareFCDoc | undefined,
-		get router() {
-			return router;
-		},
+		__chain_docs__: [] as IHandleDoc[],
 		handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>) {
-			const layer = Layer("/", {}, fn);
-			layer.method = method;
-			if ("methods" in route) {
-				(route as any).methods[method] = true;
+			router.use(fn as any);
+			if ("__chain_docs__" in fn) {
+				const docs = (fn as any).__chain_docs__;
+
+				this.__chain_docs__ = [...this.__chain_docs__, ...docs];
 			}
-			route.stack.push(layer);
 			return this as unknown as IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 		},
 		doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components: swaggerJSDoc.Components = {}) {
 			const { components: comp = {}, ...op } = operation;
 
-			this.__doc__ = joinDocs(this.__doc__ ?? {}, { ...op, components: joinObject(comp, components) });
+			const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
+
+			this.__chain_docs__.push({
+				stackFrame: stack,
+				operation: op,
+				components: joinObject(comp, components),
+			});
 			return this as unknown as IHandler<Rq, Rs>;
 		},
 	};
 
-	const rootHandler: RequestHandler = function (req, res, next) {
-		const chainHandler = express.Router();
-		chainHandler.route(path).stack = innerRouter.stack;
-		return chainHandler(req, res, next);
-	};
+	const rootHandler = Object.setPrototypeOf(function (req: Rq, res: Rs, next: NextFunction) {
+		return router(req, res, next);
+	}, props) as unknown as IHandler<Rq, Rs>;
 
-	return Object.assign(rootHandler, props) as unknown as IHandler<Rq, Rs>;
+	return rootHandler.handle<Rq, Rs>(fn);
 };
 
-export const defineMiddleware = <Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req, Res>): IHandler<Req, Res> => {
-	return defineRoute().handle(fn) as unknown as IHandler<Req, Res>;
-};
-
-export const defineHandler = <Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req, Res>): IHandler<Req, Res> => {
-	return defineRoute().handle(fn) as unknown as IHandler<Req, Res>;
+export const handler = <Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req, Res>) => {
+	return middleware<Req, Res>(fn);
 };

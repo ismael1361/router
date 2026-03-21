@@ -1,14 +1,17 @@
 import express from "express";
-import { router } from "./router";
+import { IRouter, router } from "./router";
+
+interface IApp extends IRouter {
+	listen: express.Application["listen"];
+}
 
 export const create = () => {
 	const app = express();
 
-	const r = router();
-	app.use(r);
+	const root = router() as unknown as IApp;
+	app.use(root);
 
-	return {
-		listen: app.listen.bind(app),
-		...r,
-	};
+	root.listen = app.listen.bind(app);
+
+	return root;
 };

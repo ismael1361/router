@@ -1,5 +1,29 @@
-import type { MiddlewareFCDoc } from "./type";
+import type { MiddlewareFCDoc, IStackFrame } from "./type";
 import { deepEqual } from "@ismael1361/utils";
+import path from "path";
+
+export const parseStack = (stack: string = new Error().stack || "") => {
+	return (
+		stack
+			?.split("\n")
+			.slice(2)
+			.map((line) => line.trim()) || []
+	).map((line): IStackFrame => {
+		const match = line.match(/at\s+(.*)\s+\((.*):(\d+):(\d+)\)/) || line.match(/at\s+(.*):(\d+):(\d+)/);
+		if (match) {
+			if (match.length === 5) {
+				const [, functionName, filePath, lineNumber, columnNumber] = match;
+				return { functionName, filePath, dir: path.dirname(filePath), lineNumber: parseInt(lineNumber), columnNumber: parseInt(columnNumber) };
+			} else if (match.length === 4) {
+				const [, filePath, lineNumber, columnNumber] = match;
+				return { functionName: "<anonymous>", filePath, dir: path.dirname(filePath), lineNumber: parseInt(lineNumber), columnNumber: parseInt(columnNumber) };
+			}
+		}
+		return { functionName: "<unknown>", filePath: line, dir: "<unknown>", lineNumber: 0, columnNumber: 0 };
+	});
+};
+
+export const rootStack = parseStack();
 
 export const isConstructedObject = (value: any): boolean => {
 	return typeof value === "object" && value !== null && value.constructor !== Object;

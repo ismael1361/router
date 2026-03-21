@@ -1,38 +1,49 @@
-import { create, Request } from "../src/2.0";
+import { create, middleware, Request } from "../src/2.0";
 
 const app = create();
 const port = 8080;
 
-interface AuthRequest extends Request<"userId" | "id", { user?: { id: string; roles: string[] } }> {
-	user: { id: string; roles: string[] };
+interface AuthRequest extends Request<"userId" | "id"> {
+	user: { userId: string; id: string; roles: string[] };
 }
 
-const authMiddleware = (req: AuthRequest, res: any, next: any) => {
-	const { user } = req;
-	console.log("Console:", `Hello, ${user.id}!`);
+const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
+	console.log(req.params, req.body, req.query);
+	const { userId = "", id = "" } = req.params;
+	req.user = { userId, id, roles: ["admin"] };
+	console.log("Console:", `Hello, ${userId}!`);
 	next();
-};
+}).doc({
+	security: [{ bearerAuth: [] }],
+	components: {
+		securitySchemes: {
+			bearerAuth: {
+				type: "http",
+				scheme: "bearer",
+			},
+		},
+	},
+});
 
-app.get("/hello/:username/:id")
+const route = app
+	.get("/hello/:userId/:id")
 	.handle(authMiddleware)
-	.handle<
-		Request<
-			any,
-			{
-				id: string;
-			}
-		>
-	>((req, res, next) => {
+	.handle((req, res, next) => {
 		const { user } = req;
-		const { id } = req.body;
-		console.log("Console:", `Hello, ${user.id}! Your ID is ${id}.`);
+		console.log("Console:", `Hello, ${user.id}! Your ID is ${user.userId}.`);
 		next();
 	})
+	.doc({
+		tags: ["Users"],
+	})
 	.handle((req, res) => {
-		const { username } = req.params;
-		const { id } = req.body;
-		res.send(`Hello, ${username}! Your ID is ${id}.`);
+		const { userId } = req.params;
+		res.send(`Hello, ${userId}! Your ID is ${req.user.userId}.`);
+	})
+	.doc({
+		summary: "Get router",
 	});
+console.log(JSON.stringify((app as any).__chain_docs__, null, 2));
 
 app.listen(port, () => {
 	console.log(`Server is running on http://localhost:${port}`);

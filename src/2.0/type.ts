@@ -89,3 +89,24 @@ export type Methods =
 export type MiddlewareFCDoc = swaggerJSDoc.Operation & {
 	components?: swaggerJSDoc.Components;
 };
+
+export interface IStackFrame {
+	functionName: string;
+	filePath: string;
+	dir: string;
+	lineNumber: number;
+	columnNumber: number;
+}
+
+export interface IHandleDoc {
+	stackFrame: IStackFrame;
+	operation: swaggerJSDoc.Operation;
+	components: swaggerJSDoc.Components;
+}
+
+export interface IRouteDoc {
+	method: Methods;
+	path: string;
+	parent: IHandleDoc | null;
+	children: IHandleDoc[];
+}
