@@ -1,6 +1,6 @@
 import express from "express";
 import { METHODS } from "http";
-import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher } from "./type";
+import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams } from "./type";
 import { handler } from "./handle";
 import { parseStack, rootStack } from "./utils";
 import nodePath from "path";
@@ -9,6 +9,25 @@ export const router = (): IRouter => {
 	const innerRouter = express.Router();
 
 	const routesDocs: Array<() => ITreeDoc> = [];
+
+	const defineRouteDoc = (method: Methods | undefined, path: string, doc?: MiddlewareFCDoc, children?: any) => {
+		const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
+
+		routesDocs.push((): ITreeDoc => {
+			const { components = {}, ...operation } = doc || {};
+
+			return {
+				method,
+				path,
+				parent: {
+					stackFrame: stack,
+					operation,
+					components,
+				},
+				children: (children ? children.__chain_docs__ : []) || [],
+			};
+		});
+	};
 
 	// Criamos o objeto com os seus métodos customizados
 	const customMethods: Record<string, any> = {
@@ -24,24 +43,37 @@ export const router = (): IRouter => {
 		route(path: string, doc?: MiddlewareFCDoc) {
 			const route = router();
 			innerRouter.use(path, route);
-
-			const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
-
-			routesDocs.push((): ITreeDoc => {
-				const { components = {}, ...operation } = doc || {};
-
-				return {
-					path,
-					parent: {
-						stackFrame: stack,
-						operation,
-						components,
-					},
-					children: (route as any).__chain_docs__,
-				};
-			});
-
+			defineRouteDoc(undefined, path, doc, route);
 			return route;
+		},
+
+		use() {
+			const args:
+				| [prefix: string, doc?: MiddlewareFCDoc]
+				| [path: PathParams, doc?: MiddlewareFCDoc]
+				| [prefix: string, handlers: IRouter | RequestHandler, doc?: MiddlewareFCDoc]
+				| [path: PathParams, handlers: IRouter | RequestHandler, doc?: MiddlewareFCDoc]
+				| [handlers: IRouter | RequestHandler, doc?: MiddlewareFCDoc] = Array.from(arguments) as any;
+
+			const path: PathParams | undefined = typeof args[0] === "string" || args[0] instanceof RegExp || Array.isArray(args[0]) ? args[0] : undefined;
+			const handler: IRouter | RequestHandler | undefined = path ? (typeof args[1] === "function" ? args[1] : undefined) : typeof args[0] === "function" ? args[0] : undefined;
+			const doc: MiddlewareFCDoc | undefined = typeof args[args.length - 1] === "object" && typeof args[args.length - 1] !== "function" ? (args[args.length - 1] as any) : undefined;
+
+			const route = router();
+
+			if (path) {
+				if (handler) {
+					innerRouter.use(path, handler);
+				} else {
+					innerRouter.use(path, route);
+				}
+			} else if (handler) {
+				innerRouter.use(handler);
+			}
+
+			defineRouteDoc(undefined, "/", doc);
+
+			return handler ? undefined : route;
 		},
 	};
 
@@ -55,22 +87,7 @@ export const router = (): IRouter => {
 
 				innerRouter[method].apply(innerRouter, [path, rootHandler] as any);
 
-				const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
-
-				routesDocs.push((): ITreeDoc => {
-					const { components = {}, ...operation } = doc || {};
-
-					return {
-						method,
-						path,
-						parent: {
-							stackFrame: stack,
-							operation,
-							components,
-						},
-						children: (rootHandler as any).__chain_docs__ || [],
-					};
-				});
+				defineRouteDoc(method, path, doc, rootHandler);
 
 				const props = {};
 

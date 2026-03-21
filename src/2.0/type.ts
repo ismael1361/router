@@ -45,9 +45,7 @@ export interface RequestHandler<Req extends Request = Request, Res extends Respo
 
 export type { NextFunction };
 
-export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> {
-	(req: Rq, res: Rs, next: NextFunction): unknown;
-
+export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
 	handle<Req extends Request = Request, Res extends Response = Response>(
 		fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>,
 	): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
@@ -64,7 +62,7 @@ export type PathParams = string | RegExp | Array<string | RegExp>;
 export interface IRouterMatcher<Method extends Methods = any> {
 	<Route extends string, P extends string = ExtractRouteParameters<Route>>(path: Route, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
 	<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
-	(path: PathParams, doc?: MiddlewareFCDoc): IHandler<Request<string>>;
+	(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
 }
 
 export interface IRouter extends RequestHandler {
@@ -100,8 +98,11 @@ export interface IRouter extends RequestHandler {
 	route<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
 	route(path: PathParams, doc?: MiddlewareFCDoc): IRouter;
 
-	use<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
-	use(path?: PathParams, doc?: MiddlewareFCDoc): IRouter;
+	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
+	use(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
+	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
+	use(path: PathParams, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
+	use(handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
 }
 
 /**
