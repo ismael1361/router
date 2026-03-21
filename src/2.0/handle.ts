@@ -1,5 +1,5 @@
 import express from "express";
-import type { Request, Response, RequestHandler, JoinRequest, JoinResponse, NextFunction, IHandleDoc } from "./type";
+import type { Request, Response, RequestHandler, JoinRequest, JoinResponse, NextFunction, ITreeDoc } from "./type";
 import type swaggerJSDoc from "swagger-jsdoc";
 import { MiddlewareFCDoc } from "../1.0";
 import { joinObject, parseStack, rootStack } from "./utils";
@@ -19,13 +19,14 @@ export const middleware = <Rq extends Request = Request, Rs extends Response = R
 	const router = express.Router({ mergeParams: true });
 
 	const props = {
-		__chain_docs__: [] as IHandleDoc[],
+		__chain_docs__: {
+			parent: null,
+			children: [],
+		} as ITreeDoc,
 		handle<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>) {
 			router.use(fn as any);
 			if ("__chain_docs__" in fn) {
-				const docs = (fn as any).__chain_docs__;
-
-				this.__chain_docs__ = [...this.__chain_docs__, ...docs];
+				this.__chain_docs__.children.push((fn as any).__chain_docs__);
 			}
 			return this as unknown as IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 		},
@@ -34,7 +35,7 @@ export const middleware = <Rq extends Request = Request, Rs extends Response = R
 
 			const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
 
-			this.__chain_docs__.push({
+			this.__chain_docs__.children.push({
 				stackFrame: stack,
 				operation: op,
 				components: joinObject(comp, components),

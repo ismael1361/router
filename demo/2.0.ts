@@ -43,6 +43,7 @@ const route = app
 	.doc({
 		summary: "Get router",
 	});
+
 console.log(JSON.stringify((app as any).__chain_docs__, null, 2));
 
 app.listen(port, () => {

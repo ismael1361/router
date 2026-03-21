@@ -98,15 +98,17 @@ export interface IStackFrame {
 	columnNumber: number;
 }
 
-export interface IHandleDoc {
+export interface IChildrenDoc {
 	stackFrame: IStackFrame;
 	operation: swaggerJSDoc.Operation;
 	components: swaggerJSDoc.Components;
 }
 
-export interface IRouteDoc {
-	method: Methods;
-	path: string;
-	parent: IHandleDoc | null;
-	children: IHandleDoc[];
+export interface IParentDoc extends IChildrenDoc {}
+
+export interface ITreeDoc {
+	method?: Methods;
+	path?: string;
+	parent: IParentDoc | null;
+	children: (IChildrenDoc | ITreeDoc)[];
 }

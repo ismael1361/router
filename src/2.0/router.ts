@@ -1,6 +1,6 @@
 import express from "express";
 import { METHODS } from "http";
-import type { ExtractRouteParameters, Request, Methods, RequestHandler, MiddlewareFCDoc, IRouteDoc } from "./type";
+import type { ExtractRouteParameters, Request, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc } from "./type";
 import { IHandler, handler } from "./handle";
 import { parseStack, rootStack } from "./utils";
 import nodePath from "path";
@@ -40,7 +40,7 @@ export interface IRouter extends RequestHandler {
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
 
-	const routesDocs: Array<() => IRouteDoc> = [];
+	const routesDocs: Array<() => ITreeDoc> = [];
 
 	// Criamos o objeto com os seus métodos customizados
 	const customMethods: Record<string, any> = {
@@ -61,7 +61,7 @@ export const router = (): IRouter => {
 
 				const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
 
-				routesDocs.push(() => {
+				routesDocs.push((): ITreeDoc => {
 					const { components = {}, ...operation } = doc || {};
 
 					return {
