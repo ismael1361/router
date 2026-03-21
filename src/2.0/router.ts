@@ -1,41 +1,9 @@
 import express from "express";
 import { METHODS } from "http";
-import type { ExtractRouteParameters, Request, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc } from "./type";
-import { IHandler, handler } from "./handle";
+import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher } from "./type";
+import { handler } from "./handle";
 import { parseStack, rootStack } from "./utils";
 import nodePath from "path";
-
-export interface IRoute<Path extends string, P extends string = ExtractRouteParameters<Path>> extends IHandler<Request<P>> {}
-
-// Definimos a interface que é uma função E possui métodos
-export interface IRouter extends RequestHandler {
-	// Abaixo os métodos do objeto
-	all<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	get<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	post<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	put<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	delete<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	patch<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	options<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	head<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-
-	checkout<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	copy<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	lock<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	merge<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	mkactivity<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	mkcol<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	move<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	"m-search"<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	notify<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	purge<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	report<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	search<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	subscribe<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	trace<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	unlock<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-	unsubscribe<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IRoute<Path, P>;
-}
 
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
@@ -44,8 +12,36 @@ export const router = (): IRouter => {
 
 	// Criamos o objeto com os seus métodos customizados
 	const customMethods: Record<string, any> = {
+		param(name: string, handler: any) {
+			innerRouter.param(name, handler);
+			return this as unknown as IRouter;
+		},
+
 		get __chain_docs__() {
 			return routesDocs.map((getDoc) => getDoc());
+		},
+
+		route(path: string, doc?: MiddlewareFCDoc) {
+			const route = router();
+			innerRouter.use(path, route);
+
+			const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
+
+			routesDocs.push((): ITreeDoc => {
+				const { components = {}, ...operation } = doc || {};
+
+				return {
+					path,
+					parent: {
+						stackFrame: stack,
+						operation,
+						components,
+					},
+					children: (route as any).__chain_docs__,
+				};
+			});
+
+			return route;
 		},
 	};
 
@@ -78,7 +74,7 @@ export const router = (): IRouter => {
 
 				const props = {};
 
-				return Object.assign(rootHandler, props) as unknown as IRoute<Path, P>;
+				return Object.assign(rootHandler, props) as unknown as IRouterMatcher;
 			};
 		});
 

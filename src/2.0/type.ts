@@ -45,31 +45,64 @@ export interface RequestHandler<Req extends Request = Request, Res extends Respo
 
 export type { NextFunction };
 
-export type Methods =
-	| "all"
-	| "get"
-	| "post"
-	| "put"
-	| "delete"
-	| "patch"
-	| "options"
-	| "head"
-	| "checkout"
-	| "copy"
-	| "lock"
-	| "merge"
-	| "mkactivity"
-	| "mkcol"
-	| "move"
-	| "m-search"
-	| "notify"
-	| "purge"
-	| "report"
-	| "search"
-	| "subscribe"
-	| "trace"
-	| "unlock"
-	| "unsubscribe";
+export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> {
+	(req: Rq, res: Rs, next: NextFunction): unknown;
+
+	handle<Req extends Request = Request, Res extends Response = Response>(
+		fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>,
+	): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
+
+	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IHandler<Rq, Rs>;
+}
+
+export interface IMiddleware<Rq extends Request = Request, Rs extends Response = Response> extends IHandler<Rq, Rs> {}
+
+export type Methods = "all" | "get" | "post" | "put" | "delete" | "patch" | "options" | "head";
+
+export type PathParams = string | RegExp | Array<string | RegExp>;
+
+export interface IRouterMatcher<Method extends Methods = any> {
+	<Route extends string, P extends string = ExtractRouteParameters<Route>>(path: Route, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
+	<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
+	(path: PathParams, doc?: MiddlewareFCDoc): IHandler<Request<string>>;
+}
+
+export interface IRouter extends RequestHandler {
+	"param": core.Application["param"];
+
+	// Abaixo os métodos do objeto
+	"all": IRouterMatcher<"all">;
+	"get": IRouterMatcher<"get">;
+	"post": IRouterMatcher<"post">;
+	"put": IRouterMatcher<"put">;
+	"delete": IRouterMatcher<"delete">;
+	"patch": IRouterMatcher<"patch">;
+	"options": IRouterMatcher<"options">;
+	"head": IRouterMatcher<"head">;
+
+	"checkout": IRouterMatcher;
+	"copy": IRouterMatcher;
+	"lock": IRouterMatcher;
+	"merge": IRouterMatcher;
+	"mkactivity": IRouterMatcher;
+	"mkcol": IRouterMatcher;
+	"move": IRouterMatcher;
+	"m-search": IRouterMatcher;
+	"notify": IRouterMatcher;
+	"purge": IRouterMatcher;
+	"report": IRouterMatcher;
+	"search": IRouterMatcher;
+	"subscribe": IRouterMatcher;
+	"trace": IRouterMatcher;
+	"unlock": IRouterMatcher;
+	"unsubscribe": IRouterMatcher;
+
+	route<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
+	route(path: PathParams, doc?: MiddlewareFCDoc): IRouter;
+
+	use<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
+	use(path?: PathParams, doc?: MiddlewareFCDoc): IRouter;
+}
 
 /**
  * Define a estrutura da documentação Swagger/OpenAPI que pode ser anexada a um middleware.
