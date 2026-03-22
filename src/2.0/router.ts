@@ -7,13 +7,7 @@ import nodePath from "path";
 import { renderChainDocs } from "./renderChainDocs";
 import swaggerJSDoc from "swagger-jsdoc";
 import OpenAPISnippet from "openapi-snippet";
-
-class OpenAPIError extends Error {
-	constructor(message: string, stackFrames: IStackFrame[] = []) {
-		super(message);
-		this.stack = `Error: ${message}\n` + stackFrames.map((frame) => `    at ${frame.functionName} (${frame.filePath}:${frame.lineNumber}:${frame.columnNumber})`).join("\n");
-	}
-}
+import { OpenAPIError, analyzeSwaggerJSONDoc } from "./analyzeSwagger";
 
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
@@ -124,6 +118,12 @@ export const router = (): IRouter => {
 				...doc,
 			};
 
+			// Valida o documento OAS antes de gerar os snippets
+			const analysisErrors = analyzeSwaggerJSONDoc(definition as swaggerJSDoc.OAS3Definition);
+			if (analysisErrors.length > 0) {
+				throw analysisErrors[0];
+			}
+
 			const targets: NonNullable<SwaggerOptions["targets"]> = innerSwaggerOptions.targets || [
 				"c_libcurl",
 				"csharp_restsharp",
@@ -162,10 +162,22 @@ export const router = (): IRouter => {
 							const snippet = generatedCode.snippets[snippetIdx];
 							definition.paths[path][method]["x-codeSamples"][snippetIdx] = { lang: targetLabels[snippet.id as SnippetTargets], label: snippet.title, source: snippet.content };
 						}
+
+						if ("stackFrames" in definition.paths[path][method]) {
+							delete definition.paths[path][method].stackFrames;
+						}
 					} catch (e) {
 						throw new OpenAPIError(`Sintax error in the OpenAPI definition for ${method.toUpperCase()} ${path}: ${(e as Error).message}`, definition.paths[path][method]?.stackFrames);
 					}
 				}
+			}
+
+			if (definition.components && "stackFrames" in definition.components) {
+				delete definition.components.stackFrames;
+			}
+
+			if ("defaultResponses" in definition) {
+				delete definition.defaultResponses;
 			}
 
 			return {

@@ -14,7 +14,7 @@ const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
 	console.log("Console:", `Hello, ${userId}!`);
 	next();
 }).doc({
-	security: [{ BearerAuth: [] }],
+	security: [{ bearerAuth: [] }],
 	components: {
 		securitySchemes: {
 			bearerAuth: {
@@ -58,7 +58,11 @@ routeV1
 	});
 
 app.route("/v1", routeV1, {
+	security: [{ bearerAuth: [] }],
 	responses: {
+		"400": {
+			description: "Account not found",
+		},
 		"404": {
 			description: "Not found",
 		},

@@ -137,5 +137,20 @@ export const renderChainDocs = (docs: ITreeDoc[]): Partial<SwaggerOptions> => {
 		}
 	}
 
+	// Aplica defaultResponses em cada operação que não definiu responses
+	if (doc.defaultResponses && doc.paths) {
+		for (const path in doc.paths) {
+			for (const method in doc.paths[path]) {
+				const operation = doc.paths[path][method];
+				if (typeof operation === "object" && operation !== null) {
+					doc.paths[path][method] = {
+						...operation,
+						responses: joinObject(doc.defaultResponses, operation.responses ?? {}),
+					};
+				}
+			}
+		}
+	}
+
 	return doc;
 };
