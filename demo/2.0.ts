@@ -40,17 +40,29 @@ app.get("/hello/:userId/:id")
 		res.send(`Hello, ${userId}! Your ID is ${req.user.userId}.`);
 	})
 	.doc({
+		parameters: [
+			{
+				name: "userId",
+				in: "path",
+				required: true,
+				schema: { type: "string" },
+			},
+			{
+				name: "id",
+				in: "path",
+				required: true,
+				schema: { type: "string" },
+			},
+		],
 		summary: "Get router",
 	});
 
 const routeV1 = router();
 
 routeV1
-	.get("/hello/:userId/:id")
-	.handler(authMiddleware)
+	.get("/test/route")
 	.handler((req, res) => {
-		const { userId } = req.params;
-		res.send(`Hello, ${userId}! Your ID is ${req.user.userId}.`);
+		res.send(`Hello from route!`);
 	})
 	.doc({
 		summary: "Get router v1",

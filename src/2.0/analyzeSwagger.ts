@@ -18,11 +18,14 @@ const VALID_SCHEMA_TYPES = new Set(["string", "number", "integer", "boolean", "a
 const VALID_SECURITY_TYPES = new Set(["apiKey", "http", "oauth2", "openIdConnect"]);
 
 /**
- * Extrai nomes de parâmetros de um template de path, ex: "/users/{userId}/posts/{postId}" → ["userId", "postId"]
+ * Extrai nomes de parâmetros de um template de path
+ * ex: "/users/{userId}/posts/{postId}" → ["userId", "postId"]
+ * ex: "/users/:userId/books/:bookId" → ["userId", "bookId"]
+ * ex: "/flights/:from-:to" → ["from", "to"]
  */
 const extractPathTemplateParams = (path: string): string[] => {
-	const matches = path.match(/\{([^}]+)\}/g);
-	return matches ? matches.map((m) => m.slice(1, -1)) : [];
+	const matches = path.match(/\{([A-Za-z0-9_]+)\}/g) || path.match(/:([A-Za-z0-9_]+)/g);
+	return matches ? matches.map((m) => m.replace(/[:{}]/g, "")) : [];
 };
 
 /**
@@ -214,19 +217,19 @@ export const analyzeSwaggerJSONDoc = (doc: swaggerJSDoc.OAS3Definition): OpenAPI
 	// ═══════════════════════════════════════════
 
 	if (!doc.openapi) {
-		errors.push({ message: "Campo obrigatório 'openapi' ausente", path: "openapi", stackFrames: [] });
+		errors.push({ message: "Campo obrigatório 'openapi' ausente", path: "openapi", stackFrames: doc?.stackFrames ?? [] });
 	} else if (!/^3\.\d+\.\d+$/.test(doc.openapi)) {
-		errors.push({ message: `Versão 'openapi' inválida: '${doc.openapi}'. Formato esperado: 3.x.x`, path: "openapi", stackFrames: [] });
+		errors.push({ message: `Versão 'openapi' inválida: '${doc.openapi}'. Formato esperado: 3.x.x`, path: "openapi", stackFrames: doc?.stackFrames ?? [] });
 	}
 
 	if (!doc.info) {
-		errors.push({ message: "Campo obrigatório 'info' ausente", path: "info", stackFrames: [] });
+		errors.push({ message: "Campo obrigatório 'info' ausente", path: "info", stackFrames: doc?.stackFrames ?? [] });
 	} else {
 		if (!doc.info.title) {
-			errors.push({ message: "Campo obrigatório 'info.title' ausente", path: "info.title", stackFrames: [] });
+			errors.push({ message: "Campo obrigatório 'info.title' ausente", path: "info.title", stackFrames: doc?.stackFrames ?? [] });
 		}
 		if (!doc.info.version) {
-			errors.push({ message: "Campo obrigatório 'info.version' ausente", path: "info.version", stackFrames: [] });
+			errors.push({ message: "Campo obrigatório 'info.version' ausente", path: "info.version", stackFrames: doc?.stackFrames ?? [] });
 		}
 	}
 
@@ -445,9 +448,9 @@ export const analyzeSwaggerJSONDoc = (doc: swaggerJSDoc.OAS3Definition): OpenAPI
 		const tagNames = new Set<string>();
 		for (const tag of doc.tags) {
 			if (!tag.name) {
-				errors.push({ message: "Campo obrigatório 'name' ausente na tag", path: "tags", stackFrames: [] });
+				errors.push({ message: "Campo obrigatório 'name' ausente na tag", path: "tags", stackFrames: doc?.stackFrames ?? [] });
 			} else if (tagNames.has(tag.name)) {
-				errors.push({ message: `Tag '${tag.name}' duplicada`, path: "tags", stackFrames: [] });
+				errors.push({ message: `Tag '${tag.name}' duplicada`, path: "tags", stackFrames: doc?.stackFrames ?? [] });
 			} else {
 				tagNames.add(tag.name);
 			}
@@ -461,7 +464,7 @@ export const analyzeSwaggerJSONDoc = (doc: swaggerJSDoc.OAS3Definition): OpenAPI
 	if (doc.servers) {
 		for (const [i, server] of doc.servers.entries()) {
 			if (!server.url) {
-				errors.push({ message: `Campo obrigatório 'url' ausente no server[${i}]`, path: `servers[${i}]`, stackFrames: [] });
+				errors.push({ message: `Campo obrigatório 'url' ausente no server[${i}]`, path: `servers[${i}]`, stackFrames: doc?.stackFrames ?? [] });
 			}
 		}
 	}

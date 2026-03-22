@@ -100,6 +100,7 @@ export const router = (): IRouter => {
 
 		defineSwagger(options: SwaggerOptions) {
 			innerSwaggerOptions = options;
+			innerSwaggerOptions.stackFrames = [parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0]];
 		},
 
 		getSwagger() {
@@ -115,7 +116,7 @@ export const router = (): IRouter => {
 
 			const definition = {
 				...omit(swaggerOptions, "path", "defaultResponses"),
-				...doc,
+				...omit(doc, "path", "defaultResponses"),
 			};
 
 			// Valida o documento OAS antes de gerar os snippets
@@ -178,6 +179,10 @@ export const router = (): IRouter => {
 
 			if ("defaultResponses" in definition) {
 				delete definition.defaultResponses;
+			}
+
+			if ("stackFrames" in definition) {
+				delete definition.stackFrames;
 			}
 
 			return {

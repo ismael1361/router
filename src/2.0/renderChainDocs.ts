@@ -65,9 +65,9 @@ export const renderChainDocs = (docs: ITreeDoc[]): Partial<SwaggerOptions> => {
 			if (!isTreeDoc(c) && isChildrenDoc(c)) {
 				mergedOperation = joinObject(mergedOperation, c.operation);
 				mergedComponents = joinObject(mergedComponents, c.components);
-				stackFrames.push(c.stackFrame);
+				stackFrames.unshift(c.stackFrame);
 				if (Object.keys(c.components ?? {}).length > 0) {
-					componentStackFrames.push(c.stackFrame);
+					componentStackFrames.unshift(c.stackFrame);
 				}
 			}
 		}
@@ -77,7 +77,7 @@ export const renderChainDocs = (docs: ITreeDoc[]): Partial<SwaggerOptions> => {
 			const existingCompFrames: IStackFrame[] = (doc.components as any)?.stackFrames ?? [];
 			doc.components = {
 				...joinObject(doc.components ?? {}, mergedComponents),
-				stackFrames: [...existingCompFrames, ...componentStackFrames],
+				stackFrames: [...componentStackFrames, ...existingCompFrames],
 			};
 		}
 
@@ -92,7 +92,7 @@ export const renderChainDocs = (docs: ITreeDoc[]): Partial<SwaggerOptions> => {
 					...doc.paths?.[fullPath],
 					[d.method]: {
 						...joinObject(existing, mergedOperation),
-						stackFrames: [...existingFrames, ...stackFrames],
+						stackFrames: [...stackFrames, ...existingFrames],
 					},
 				},
 			};
@@ -128,7 +128,7 @@ export const renderChainDocs = (docs: ITreeDoc[]): Partial<SwaggerOptions> => {
 							...doc.paths?.[fullPath],
 							[m]: {
 								...joinObject(existing, mergedOperation, childEntry),
-								stackFrames: [...existingFrames, ...stackFrames, ...childStackFrames],
+								stackFrames: [...childStackFrames, ...stackFrames, ...existingFrames],
 							},
 						},
 					};
