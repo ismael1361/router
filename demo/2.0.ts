@@ -27,8 +27,8 @@ const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
 
 const route = app
 	.get("/hello/:userId/:id")
-	.handle(authMiddleware)
-	.handle((req, res, next) => {
+	.handler(authMiddleware)
+	.handler((req, res, next) => {
 		const { user } = req;
 		console.log("Console:", `Hello, ${user.id}! Your ID is ${user.userId}.`);
 		next();
@@ -36,7 +36,7 @@ const route = app
 	.doc({
 		tags: ["Users"],
 	})
-	.handle((req, res) => {
+	.handler((req, res) => {
 		const { userId } = req.params;
 		res.send(`Hello, ${userId}! Your ID is ${req.user.userId}.`);
 	})

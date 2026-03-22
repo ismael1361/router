@@ -16,10 +16,21 @@ interface IApp extends IRouter {
 export const create = () => {
 	const app = express();
 
-	const root = router() as unknown as IApp;
-	app.use(root);
+	const innerRouter = router();
+	app.use(innerRouter);
 
-	root.listen = app.listen.bind(app);
+	const innerApplication = function (req: express.Request, res: express.Response, next: express.NextFunction) {
+		return app(req, res, next);
+	} as unknown as IApp;
 
-	return root;
+	innerApplication.listen = app.listen.bind(app);
+	innerApplication.disable = app.disable.bind(app);
+	innerApplication.enable = app.enable.bind(app);
+	innerApplication.disabled = app.disabled.bind(app);
+	innerApplication.enabled = app.enabled.bind(app);
+	innerApplication.engine = app.engine.bind(app);
+	innerApplication.param = app.param.bind(app);
+	innerApplication.render = app.render.bind(app);
+
+	return Object.setPrototypeOf(innerApplication, innerRouter) as unknown as IApp;
 };

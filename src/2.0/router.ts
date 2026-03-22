@@ -1,7 +1,7 @@
 import express from "express";
 import { METHODS } from "http";
 import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams } from "./type";
-import { handler } from "./handle";
+import { handler } from "./handler";
 import { parseStack, rootStack } from "./utils";
 import nodePath from "path";
 

@@ -46,14 +46,16 @@ export interface RequestHandler<Req extends Request = Request, Res extends Respo
 export type { NextFunction };
 
 export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
-	handle<Req extends Request = Request, Res extends Response = Response>(
+	handler<Req extends Request = Request, Res extends Response = Response>(
 		fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>,
 	): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 
 	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IHandler<Rq, Rs>;
 }
 
-export interface IMiddleware<Rq extends Request = Request, Rs extends Response = Response> extends IHandler<Rq, Rs> {}
+export interface IMiddleware<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
+	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IMiddleware<Rq, Rs>;
+}
 
 export type Methods = "all" | "get" | "post" | "put" | "delete" | "patch" | "options" | "head";
 
