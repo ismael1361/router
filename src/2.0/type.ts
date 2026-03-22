@@ -98,13 +98,19 @@ export interface IRouter extends RequestHandler {
 	"unsubscribe": IRouterMatcher;
 
 	route<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
-	route(path: PathParams, doc?: MiddlewareFCDoc): IRouter;
+	route<T extends string>(prefix: T, router: IRouter, doc?: MiddlewareFCDoc): IRouter;
+	route(router: IRouter, doc?: MiddlewareFCDoc): IRouter;
+	// route(path: PathParams, doc?: MiddlewareFCDoc): IRouter;
 
 	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
-	use(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
+	// use(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
 	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
-	use(path: PathParams, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
+	// use(path: PathParams, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
 	use(handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
+
+	defineSwagger(options: SwaggerOptions): void;
+
+	getSwagger(): swaggerJSDoc.Options;
 }
 
 /**
@@ -126,6 +132,37 @@ export type MiddlewareFCDoc = swaggerJSDoc.Operation & {
 	components?: swaggerJSDoc.Components;
 };
 
+export type SnippetTargets =
+	| "c_libcurl"
+	| "csharp_restsharp"
+	| "csharp_httpclient"
+	| "go_native"
+	| "java_okhttp"
+	| "java_unirest"
+	| "javascript_jquery"
+	| "javascript_xhr"
+	| "node_native"
+	| "node_request"
+	| "node_unirest"
+	| "objc_nsurlsession"
+	| "ocaml_cohttp"
+	| "php_curl"
+	| "php_http1"
+	| "php_http2"
+	| "python_python3"
+	| "python_requests"
+	| "ruby_native"
+	| "shell_curl"
+	| "shell_httpie"
+	| "shell_wget"
+	| "swift_nsurlsession";
+
+export interface SwaggerOptions extends swaggerJSDoc.OAS3Definition {
+	path?: string;
+	defaultResponses?: swaggerJSDoc.Responses;
+	targets?: SnippetTargets[];
+}
+
 export interface IStackFrame {
 	functionName: string;
 	filePath: string;
@@ -145,6 +182,17 @@ export interface IParentDoc extends IChildrenDoc {}
 export interface ITreeDoc {
 	method?: Methods;
 	path?: string;
-	parent: IParentDoc | null;
+	parent: IParentDoc | SwaggerOptions | null;
 	children: (IChildrenDoc | ITreeDoc)[];
+}
+
+export interface IApplication extends IRouter {
+	listen: core.Application["listen"];
+	disable: core.Application["disable"];
+	enable: core.Application["enable"];
+	disabled: core.Application["disabled"];
+	enabled: core.Application["enabled"];
+	engine: core.Application["engine"];
+	param: core.Application["param"];
+	render: core.Application["render"];
 }

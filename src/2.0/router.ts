@@ -1,14 +1,35 @@
 import express from "express";
 import { METHODS } from "http";
-import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams } from "./type";
+import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams, SwaggerOptions, SnippetTargets, IStackFrame } from "./type";
 import { handler } from "./handler";
-import { parseStack, rootStack } from "./utils";
+import { joinObject, omit, parseStack, rootStack, targetLabels } from "./utils";
 import nodePath from "path";
+import { renderChainDocs } from "./renderChainDocs";
+import swaggerJSDoc from "swagger-jsdoc";
+import OpenAPISnippet from "openapi-snippet";
+
+class OpenAPIError extends Error {
+	constructor(message: string, stackFrames: IStackFrame[] = []) {
+		super(message);
+		this.stack = stackFrames.map((frame) => ` at ${frame.functionName} (${frame.filePath}:${frame.lineNumber}:${frame.columnNumber})`).join("\n");
+	}
+}
 
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
 
-	const routesDocs: Array<() => ITreeDoc> = [];
+	let innerSwaggerOptions: SwaggerOptions | null = null;
+
+	const routesDocs: Array<() => ITreeDoc | null> = [
+		() => {
+			return innerSwaggerOptions
+				? {
+						parent: innerSwaggerOptions,
+						children: [],
+					}
+				: null;
+		},
+	];
 
 	const defineRouteDoc = (method: Methods | undefined, path: string, doc?: MiddlewareFCDoc, children?: any) => {
 		const stack = parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0];
@@ -37,11 +58,18 @@ export const router = (): IRouter => {
 		},
 
 		get __chain_docs__() {
-			return routesDocs.map((getDoc) => getDoc());
+			return routesDocs.map((getDoc) => getDoc()).filter((doc) => doc !== null && doc !== undefined) as ITreeDoc[];
 		},
 
-		route(path: string, doc?: MiddlewareFCDoc) {
-			const route = router();
+		route() {
+			const args: [prefix: string, doc?: MiddlewareFCDoc] | [prefix: string, router: IRouter, doc?: MiddlewareFCDoc] | [router: IRouter, doc?: MiddlewareFCDoc] = Array.from(arguments) as any;
+
+			const path: string = typeof args[0] === "string" ? args[0] : "/";
+
+			const route: IRouter = typeof args[0] === "string" ? (typeof args[1] === "function" ? args[1] : router()) : typeof args[0] === "function" ? args[0] : router();
+
+			const doc: MiddlewareFCDoc | undefined = typeof args[args.length - 1] === "object" && typeof args[args.length - 1] !== "function" ? (args[args.length - 1] as any) : undefined;
+
 			innerRouter.use(path, route);
 			defineRouteDoc(undefined, path, doc, route);
 			return route;
@@ -74,6 +102,79 @@ export const router = (): IRouter => {
 			defineRouteDoc(undefined, "/", doc);
 
 			return handler ? undefined : route;
+		},
+
+		defineSwagger(options: SwaggerOptions) {
+			innerSwaggerOptions = options;
+		},
+
+		getSwagger() {
+			if (!innerSwaggerOptions) {
+				throw new Error("Swagger options not defined. Please set the swagger options using the defineSwagger method.");
+			}
+
+			const swaggerOptions = { ...innerSwaggerOptions, path: innerSwaggerOptions.path || "/doc", defaultResponses: innerSwaggerOptions.defaultResponses || {} };
+
+			let doc: Partial<swaggerJSDoc.OAS3Definition> = { paths: swaggerOptions?.paths || {}, components: swaggerOptions?.components || {} };
+
+			doc = joinObject(doc, renderChainDocs(this.__chain_docs__));
+
+			const definition = {
+				...omit(swaggerOptions, "path", "defaultResponses"),
+				...doc,
+			};
+
+			const targets: NonNullable<SwaggerOptions["targets"]> = innerSwaggerOptions.targets || [
+				"c_libcurl",
+				"csharp_restsharp",
+				"go_native",
+				"java_unirest",
+				"javascript_xhr",
+				"node_native",
+				"objc_nsurlsession",
+				"ocaml_cohttp",
+				"php_curl",
+				"python_python3",
+				"ruby_native",
+				"shell_curl",
+				"swift_nsurlsession",
+			];
+
+			for (const path in definition.paths) {
+				for (const method in definition.paths[path]) {
+					try {
+						const generatedCode = OpenAPISnippet.getEndpointSnippets(
+							{
+								servers: [
+									{
+										url: "http://[hostname]",
+									},
+								],
+								...definition,
+							},
+							path,
+							method,
+							targets,
+						);
+						definition.paths[path][method]["x-codeSamples"] = [];
+
+						for (const snippetIdx in generatedCode.snippets) {
+							const snippet = generatedCode.snippets[snippetIdx];
+							definition.paths[path][method]["x-codeSamples"][snippetIdx] = { lang: targetLabels[snippet.id as SnippetTargets], label: snippet.title, source: snippet.content };
+						}
+					} catch (e) {
+						throw new OpenAPIError(`Sintax error in the OpenAPI definition for ${method.toUpperCase()} ${path}: ${(e as Error).message}`, definition.paths[path][method]?.stackFrames);
+					}
+				}
+			}
+
+			return {
+				definition,
+				apis: [],
+			} as {
+				definition: swaggerJSDoc.OAS3Definition;
+				apis: string[];
+			};
 		},
 	};
 

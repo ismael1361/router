@@ -1,4 +1,4 @@
-import { create, middleware, Request } from "../src/2.0";
+import { create, middleware, router, Request } from "../src/2.0";
 
 const app = create();
 const port = 8080;
@@ -14,7 +14,7 @@ const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
 	console.log("Console:", `Hello, ${userId}!`);
 	next();
 }).doc({
-	security: [{ bearerAuth: [] }],
+	security: [{ BearerAuth: [] }],
 	components: {
 		securitySchemes: {
 			bearerAuth: {
@@ -25,8 +25,7 @@ const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
 	},
 });
 
-const route = app
-	.get("/hello/:userId/:id")
+app.get("/hello/:userId/:id")
 	.handler(authMiddleware)
 	.handler((req, res, next) => {
 		const { user } = req;
@@ -44,7 +43,42 @@ const route = app
 		summary: "Get router",
 	});
 
-console.log(JSON.stringify((app as any).__chain_docs__, null, 2));
+const routeV1 = router();
+
+routeV1
+	.get("/hello/:userId/:id")
+	.handler(authMiddleware)
+	.handler((req, res) => {
+		const { userId } = req.params;
+		res.send(`Hello, ${userId}! Your ID is ${req.user.userId}.`);
+	})
+	.doc({
+		summary: "Get router v1",
+		tags: ["V1"],
+	});
+
+app.route("/v1", routeV1, {
+	responses: {
+		"404": {
+			description: "Not found",
+		},
+	},
+});
+
+app.defineSwagger({
+	openapi: "3.0.0",
+	info: { title: "My API", version: "1.0.0" },
+	defaultResponses: {
+		400: { description: "Dados inválidos" },
+		401: {
+			description: "Falha na autenticação",
+		},
+		403: { description: "Acesso negado" },
+		500: { description: "Erro interno do servidor" },
+	},
+});
+
+console.log(JSON.stringify(app.getSwagger(), null, 2));
 
 app.listen(port, () => {
 	console.log(`Server is running on http://localhost:${port}`);
