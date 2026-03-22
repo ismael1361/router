@@ -11,7 +11,7 @@ import OpenAPISnippet from "openapi-snippet";
 class OpenAPIError extends Error {
 	constructor(message: string, stackFrames: IStackFrame[] = []) {
 		super(message);
-		this.stack = stackFrames.map((frame) => ` at ${frame.functionName} (${frame.filePath}:${frame.lineNumber}:${frame.columnNumber})`).join("\n");
+		this.stack = `Error: ${message}\n` + stackFrames.map((frame) => `    at ${frame.functionName} (${frame.filePath}:${frame.lineNumber}:${frame.columnNumber})`).join("\n");
 	}
 }
 
