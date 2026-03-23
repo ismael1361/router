@@ -3,6 +3,8 @@ import { router } from "./router";
 import { IApplication, IStackLog } from "./type";
 import fs from "fs";
 import path from "path";
+import { HandleError } from "./HandleError";
+import { StacksController } from "./Middlewares";
 
 export const create = () => {
 	const app = express();
@@ -23,14 +25,15 @@ export const create = () => {
 	innerApplication.param = app.param.bind(app);
 	innerApplication.render = app.render.bind(app);
 
+	let filePath = "./stacks.log";
+
 	innerApplication.getStacks = () => {
-		const filePath = "./stacks.log";
-		if (!fs.existsSync(path.resolve(process.cwd(), filePath))) {
+		if (!fs.existsSync(path.resolve(filePath))) {
 			return [];
 		}
 
 		const records = fs
-			.readFileSync(path.resolve(process.cwd(), filePath), "utf-8")
+			.readFileSync(path.resolve(filePath), "utf-8")
 			.trim()
 			.split(/\n(?=time=)/);
 		const result: IStackLog[] = [];
@@ -99,9 +102,163 @@ export const create = () => {
 		return result;
 	};
 
-	innerApplication.defineStacks = (options) => {
+	const __registerStacks__ = {
+		register(level: "ERROR" | "WARN" | "INFO" = "INFO", ...reasons: IStackLog[]) {},
+		error(...reasons: IStackLog[]) {
+			this.register?.("ERROR", ...reasons);
+		},
+		warn(...reasons: IStackLog[]) {
+			this.register?.("WARN", ...reasons);
+		},
+		info(...reasons: IStackLog[]) {
+			this.register?.("INFO", ...reasons);
+		},
+	};
+
+	innerApplication.defineStacks = (options = {}) => {
+		const { path: stacksPath = "/stacks", limit = 100, filePath: stacksFilePath = "./stacks.log", beforeStack } = options;
+
+		let filePath = stacksFilePath;
+		let timer: NodeJS.Timeout;
+
+		__registerStacks__.register = (level = "INFO", ...reasons) => {
+			const stack: string = (beforeStack?.(...reasons) || reasons)
+				.map((reason) => {
+					if (typeof reason === "string") {
+						let stack: string = "";
+						stack += `time=${new Date().toISOString()} `;
+						stack += `level=${level} `;
+						stack += `name="Log" `;
+						stack += `message=${JSON.stringify(reason)} `;
+						stack += `source="String" `;
+						stack += `statusCode=0 duration=0 meta=${JSON.stringify(reason)}`;
+						return stack;
+					}
+
+					if (reason instanceof Error) {
+						let stack: string = "";
+						stack += `time=${new Date().toISOString()} `;
+						stack += `level=${"level" in reason ? reason.level : level} `;
+						stack += `name=${JSON.stringify("name" in reason ? reason.name : "Error")} `;
+						stack += `message=${JSON.stringify("message" in reason ? reason.message : reason)} `;
+						stack += `source="Error" `;
+						stack += `statusCode=${"code" in reason ? reason.code : 0} `;
+						stack += `duration=${"duration" in reason ? reason.duration : 0} `;
+						stack += `meta=${JSON.stringify("stack" in reason ? reason.stack : reason)}`;
+						return stack;
+					}
+
+					let stack: string = "";
+
+					for (const key in reason) {
+						if (Object.prototype.hasOwnProperty.call(reason, key)) {
+							const value: any = (reason as any)[key];
+							stack += `${key}=`;
+							if (typeof value === "number") {
+								stack += value + " ";
+							} else if (value instanceof Date) {
+								stack += value.toISOString() + " ";
+							} else {
+								stack += JSON.stringify(value) + " ";
+							}
+						}
+					}
+
+					return stack.trim();
+				})
+				.join("\n");
+
+			if (!fs.existsSync(path.resolve(filePath))) {
+				fs.writeFileSync(path.resolve(filePath), "");
+			}
+			fs.appendFileSync(path.resolve(filePath), stack + "\n");
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				const lines = fs.readFileSync(path.resolve(filePath), "utf-8").trim().split("\n");
+				if (lines.length > limit) {
+					const excess = lines.length - limit;
+					const updatedLines = lines.slice(excess);
+					fs.writeFileSync(path.resolve(filePath), updatedLines.join("\n") + "\n");
+				}
+			}, 1000 * 10);
+		};
+
+		process.on("unhandledRejection", __registerStacks__.error);
+		process.on("uncaughtException", __registerStacks__.error);
+		process.on("warning", __registerStacks__.warn);
+
+		const processArgs = (level = "INFO", ...args: any[]): IStackLog[] => {
+			return args.map((arg) => {
+				if (arg instanceof HandleError) {
+					return {
+						time: arg.time,
+						level: arg.level === "NONE" ? level : arg.level,
+						name: arg.name,
+						message: arg.message,
+						source: arg.source,
+						statusCode: arg.code,
+						duration: arg.duration,
+						meta: "stack" in arg ? arg.stack : (arg.meta ?? arg),
+					};
+				} else if (arg instanceof Error) {
+					return {
+						time: new Date(),
+						level,
+						name: arg.name,
+						message: arg.message,
+						source: "Error",
+						statusCode: 500,
+						duration: 0,
+						meta: "stack" in arg ? arg.stack : arg,
+					};
+				} else if (typeof arg === "object") {
+					return {
+						time: "time" in arg ? arg.time : new Date(),
+						level: "level" in arg ? arg.level : level,
+						name: "name" in arg ? arg.name : "Log",
+						message: "message" in arg ? arg.message : JSON.stringify(arg),
+						source: "source" in arg ? arg.source : "Object",
+						statusCode: "code" in arg ? arg.code : 0,
+						duration: "duration" in arg ? arg.duration : 0,
+						meta: "stack" in arg ? arg.stack : (arg?.meta ?? arg),
+					};
+				}
+
+				return {
+					time: new Date(),
+					level,
+					name: "Log",
+					message: String(arg),
+					source: String(arg),
+					statusCode: 0,
+					duration: 0,
+					meta: arg,
+				};
+			});
+		};
+
+		const originalError = globalThis.console.error;
+		globalThis.console.error = (...args: any[]) => {
+			__registerStacks__.error(...processArgs("ERROR", ...args));
+			originalError(...args);
+		};
+
+		const originalWarn = globalThis.console.warn;
+		globalThis.console.warn = (...args: any[]) => {
+			__registerStacks__.warn(...processArgs("WARN", ...args));
+			originalWarn(...args);
+		};
+
+		const originalInfo = globalThis.console.info;
+		globalThis.console.info = (...args: any[]) => {
+			__registerStacks__.info(...processArgs("INFO", ...args));
+			originalInfo(...args);
+		};
+
+		app.get(stacksPath, StacksController(filePath) as any);
+
 		return {
-			stacksPath: "",
+			stacksPath,
 		};
 	};
 
