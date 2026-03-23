@@ -194,6 +194,26 @@ export interface ITreeDoc {
 	children: (IChildrenDoc | ITreeDoc)[];
 }
 
+export interface IStackLog {
+	time: Date;
+	level: "ERROR" | "WARN" | "INFO" | "DEBUG";
+	name: string;
+	message: string;
+	source?: string;
+	statusCode: number;
+	duration: number;
+	meta?: string;
+}
+
+export interface IStacksOptions {
+	/** Limite máximo de logs a serem empilhadas */
+	limit?: number;
+	/** Caminho base para o arquivo dos logs empilhados */
+	filePath?: string;
+
+	beforeStack?(...stacks: IStackLog[]): Array<IStackLog | string | Error>;
+}
+
 export interface IApplication extends IRouter {
 	listen: core.Application["listen"];
 	disable: core.Application["disable"];
@@ -203,4 +223,8 @@ export interface IApplication extends IRouter {
 	engine: core.Application["engine"];
 	param: core.Application["param"];
 	render: core.Application["render"];
+	getStacks(): IStackLog[];
+	defineStacks(options?: IStacksOptions): {
+		stacksPath: string;
+	};
 }

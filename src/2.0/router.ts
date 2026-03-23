@@ -11,9 +11,20 @@ import { OpenAPIError, analyzeSwaggerJSONDoc } from "./analyzeSwagger";
 import swaggerUi from "swagger-ui-express";
 import swaggerMarkdown from "./swagger-markdown";
 import * as redocUi from "./redocUi";
+import { uuidv4 } from "@ismael1361/utils";
 
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
+
+	innerRouter.get("/.well-known/appspecific/com.chrome.devtools.json", (req, res) => {
+		const workspaceUuid = uuidv4("-"); // Gera um UUID v4
+		res.json({
+			workspace: {
+				root: "",
+				uuid: workspaceUuid,
+			},
+		});
+	});
 
 	let innerSwaggerOptions: SwaggerOptions | null = null;
 
