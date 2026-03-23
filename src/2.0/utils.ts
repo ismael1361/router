@@ -1,6 +1,7 @@
-import type { MiddlewareFCDoc, IStackFrame, ITreeDoc, SwaggerOptions, IChildrenDoc, IParentDoc, Methods, SnippetTargets } from "./type";
+import type { MiddlewareFCDoc, IStackFrame, SnippetTargets, IRouter, RequestHandler, Request, Response, NextFunction } from "./type";
 import { deepEqual } from "@ismael1361/utils";
 import path from "path";
+import { HandleError } from "./HandleError";
 
 export const parseStack = (stack: string = new Error().stack || "") => {
 	return (
@@ -78,6 +79,10 @@ export const omit = <T extends object, K extends keyof T>(obj: T, ...keys: K[]):
 	return Object.fromEntries(Object.entries(obj).filter(([key]) => !keys.includes(key as K))) as Omit<T, K>;
 };
 
+export const isRouter = (router: any): router is IRouter => {
+	return router && typeof router === "function" && "path" in router && "getSwagger" in router;
+};
+
 /**
  * Junta múltiplos segmentos de path em uma única string de rota,
  * garantindo que não existam barras duplas e tratando barras extras nas extremidades.
@@ -119,3 +124,119 @@ export const targetLabels: Record<SnippetTargets, string> = {
 	shell_wget: "Shell (Wget)",
 	swift_nsurlsession: "Swift (NSURLSession)",
 };
+
+/**
+ * Envolve um middleware Express com um manipulador de erros (try-catch) centralizado.
+ * Se o handler lançar um erro, esta função o captura, formata uma resposta JSON padronizada
+ * e registra o erro. Ele lida com handlers síncronos e assíncronos (Promises).
+ *
+ * @param {MiddlewareFC<any, any>} handler O middleware a ser envolvido.
+ * @returns {MiddlewareFC<any, any>} Um novo middleware com tratamento de erro ou o handler original se for um roteador.
+ *
+ * @example
+ * // Esta função é usada internamente por `createDynamicMiddleware`.
+ * // Exemplo conceitual de como ela age:
+ *
+ * const myRiskyHandler: MiddlewareFC = (req, res, next) => {
+ *   throw new HandleError("Algo deu errado!", 400);
+ * };
+ *
+ * // Em vez de usar `myRiskyHandler` diretamente, o sistema usa `tryHandler(myRiskyHandler)`.
+ * // Se `myRiskyHandler` for chamado, o erro será capturado e uma resposta como
+ * // { "message": "Algo deu errado!", "name": "HandleError", "code": 400 }
+ * // será enviada automaticamente.
+ */
+export function tryHandler(handler: RequestHandler<any, any>) {
+	return typeof handler === "function" && !("stack" in handler)
+		? async (req: Request, res: Response, next: NextFunction) => {
+				if (res.headersSent) {
+					return;
+				}
+
+				try {
+					await new Promise((resolve) => setTimeout(resolve, 0));
+					const response: any = handler(req as any, res, next);
+					if (response instanceof Promise) await response;
+				} catch (error) {
+					const code: number = error instanceof HandleError && typeof error.cause === "number" ? error.code : 400;
+					const message = error instanceof HandleError || error instanceof Error ? error.message : "Bad ExpressRequest";
+					const name = error instanceof HandleError || error instanceof Error ? error.name : "Error";
+					const level = error instanceof HandleError && typeof error.level === "string" ? error.level : "ERROR";
+
+					res.status(code).json({ message, name, code });
+
+					if (["ERROR", "WARN", "INFO"].includes(level)) {
+						const stack = (error as any).stack || error;
+						if (level === "ERROR") console.error(error);
+						else if (level === "WARN") console.warn(error);
+						else console.info(error);
+						// fs.appendFileSync(path.join(process.cwd(), "stacks.log"), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
+					}
+				}
+			}
+		: (handler as any);
+}
+
+/**
+ * Cria um middleware dinâmico que adiciona funcionalidades extras a um middleware Express padrão.
+ * Funcionalidades adicionadas:
+ * 1.  **Tratamento de Erros:** Envolve o middleware com `tryHandler` para captura centralizada de erros.
+ * 2.  **Execução Única:** Previne que o mesmo middleware seja executado mais de uma vez na mesma requisição,
+ *     útil para middlewares aplicados em roteadores aninhados. Fornece `req.executeOnce()` para controle.
+ * 3.  **IP do Cliente:** Adiciona `req.clientIp` com o endereço de IP do cliente.
+ *
+ * @template Req - O tipo de objeto de requisição (Request) que o middleware espera.
+ * @template Res - O tipo de objeto de resposta (Response) que o middleware espera.
+ * @param {MiddlewareFC<Req, Res>} middleware O middleware original a ser aprimorado.
+ * @returns {MiddlewareFC<Req, Res>} O novo middleware aprimorado.
+ *
+ * @example
+ * // Middleware de autenticação que só deve rodar uma vez.
+ * const authMiddleware: MiddlewareFC<{ user: any }> = (req, res, next) => {
+ *   // Garante que a lógica de autenticação não seja executada novamente.
+ *   req.executeOnce();
+ *   console.log('Verificando autenticação...');
+ *   (req as any).user = { id: 123 };
+ *   next();
+ * };
+ *
+ * // Em um roteador:
+ * router.use(authMiddleware); // Aplicado a todas as rotas
+ * router.get("/profile", authMiddleware, (req, res) => {
+ *   // Mesmo sendo declarado duas vezes, o console.log só aparecerá uma vez.
+ *   res.send(`Perfil do usuário: ${(req as any).user.id}, IP: ${req.clientIp}`);
+ * });
+ */
+export function createDynamicMiddleware<Req extends Request = Request, Res extends Response = Response>(middleware: RequestHandler<Req, Res>): RequestHandler<Req, Res> {
+	const callback: RequestHandler<Req, Res> = (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const xForwardedFor = ((v) => (Array.isArray(v) ? v.join(",") : v))(req.headers["x-forwarded-for"] || "").replace(/:\d+$/, "");
+			req.clientIp = xForwardedFor || req.connection.remoteAddress;
+		} catch {}
+
+		if (!(req.__executedMiddlewares__ instanceof Set)) req.__executedMiddlewares__ = new Set();
+
+		if (res.headersSent) {
+			return;
+		}
+
+		const executedSet = req.__executedMiddlewares__;
+
+		const id = typeof (middleware as any).id === "string" ? (middleware as any).id : middleware;
+
+		if (!executedSet.has(id)) {
+			req.executeOnce = (isOnce: boolean = true) => {
+				if (isOnce) executedSet.add(id);
+				else executedSet.delete(id);
+			};
+
+			tryHandler(middleware)(req, res, next);
+		} else {
+			next();
+		}
+	};
+
+	(callback as any).id = (middleware as any).id || undefined;
+
+	return Object.setPrototypeOf(callback.bind(middleware), Object.getPrototypeOf(middleware));
+}

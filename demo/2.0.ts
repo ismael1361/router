@@ -94,7 +94,7 @@ app.defineSwagger({
 	},
 });
 
-console.log(JSON.stringify(app.getSwagger(), null, 2));
+// console.log(JSON.stringify(app.getSwagger(), null, 2));
 
 app.listen(port, () => {
 	console.log(`Server is running on http://localhost:${port}`);

@@ -27,7 +27,11 @@ export type ParamsDictionary<P extends string = string> = {
 	[key in P]: string;
 };
 
-export interface Request<P extends string = string, ReqBody = {}, ReqQuery = core.Query, ResBody = any> extends core.Request<ParamsDictionary<P>, ResBody, ReqBody, ReqQuery, Record<string, any>> {}
+export interface Request<P extends string = string, ReqBody = {}, ReqQuery = core.Query, ResBody = any> extends core.Request<ParamsDictionary<P>, ResBody, ReqBody, ReqQuery, Record<string, any>> {
+	__executedMiddlewares__?: Set<any>;
+	clientIp?: string;
+	executeOnce(isOnce?: boolean): void;
+}
 
 export type JoinRequest<A extends Request, B extends Request> = A extends Request<infer AP, infer AReqBody, infer AReqQuery, infer AResBody> & infer AReq
 	? B extends Request<infer BP, infer BReqBody, infer BReqQuery, infer BResBody> & infer BReq
@@ -96,6 +100,10 @@ export interface IRouter extends RequestHandler {
 	"trace": IRouterMatcher;
 	"unlock": IRouterMatcher;
 	"unsubscribe": IRouterMatcher;
+
+	"parent": IRouter | null;
+
+	"path": string;
 
 	route<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
 	route<T extends string>(prefix: T, router: IRouter, doc?: MiddlewareFCDoc): IRouter;

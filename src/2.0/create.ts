@@ -6,7 +6,7 @@ export const create = () => {
 	const app = express();
 
 	const innerRouter = router();
-	app.use(innerRouter);
+	app.use(innerRouter as any);
 
 	const innerApplication = function (req: express.Request, res: express.Response, next: express.NextFunction) {
 		return app(req, res, next);

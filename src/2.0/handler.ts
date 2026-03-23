@@ -2,7 +2,7 @@ import express from "express";
 import type { Request, Response, RequestHandler, JoinRequest, JoinResponse, NextFunction, ITreeDoc, IHandler, IMiddleware } from "./type";
 import type swaggerJSDoc from "swagger-jsdoc";
 import { MiddlewareFCDoc } from "../1.0";
-import { joinObject, parseStack, rootStack } from "./utils";
+import { createDynamicMiddleware, joinObject, parseStack, rootStack } from "./utils";
 import nodePath from "path";
 
 export const handler = <Rq extends Request = Request, Rs extends Response = Response>(fn: RequestHandler<Rq, Rs>) => {
@@ -14,7 +14,7 @@ export const handler = <Rq extends Request = Request, Rs extends Response = Resp
 			children: [],
 		} as ITreeDoc,
 		handler<Req extends Request = Request, Res extends Response = Response>(fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs> | IMiddleware<Req & Rq, Res & Rs>) {
-			router.use(fn as any);
+			router.use(createDynamicMiddleware(fn) as any);
 			if ("__chain_docs__" in fn) {
 				this.__chain_docs__.children.push((fn as any).__chain_docs__);
 			}

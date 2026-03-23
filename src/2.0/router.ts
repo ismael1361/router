@@ -1,13 +1,16 @@
 import express from "express";
 import { METHODS } from "http";
-import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams, SwaggerOptions, SnippetTargets, IStackFrame } from "./type";
+import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams, SwaggerOptions, SnippetTargets } from "./type";
 import { handler } from "./handler";
-import { joinObject, omit, parseStack, rootStack, targetLabels } from "./utils";
+import { isRouter, joinObject, joinPaths, omit, parseStack, rootStack, targetLabels } from "./utils";
 import nodePath from "path";
 import { renderChainDocs } from "./renderChainDocs";
 import swaggerJSDoc from "swagger-jsdoc";
 import OpenAPISnippet from "openapi-snippet";
 import { OpenAPIError, analyzeSwaggerJSONDoc } from "./analyzeSwagger";
+import swaggerUi from "swagger-ui-express";
+import swaggerMarkdown from "./swagger-markdown";
+import * as redocUi from "./redocUi";
 
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
@@ -46,6 +49,12 @@ export const router = (): IRouter => {
 
 	// Criamos o objeto com os seus métodos customizados
 	const customMethods: Record<string, any> = {
+		__router_path__: "/",
+
+		get path() {
+			return joinPaths(this.parent?.path || "/", this.__router_path__);
+		},
+
 		param(name: string, handler: any) {
 			innerRouter.param(name, handler);
 			return this as unknown as IRouter;
@@ -62,9 +71,16 @@ export const router = (): IRouter => {
 
 			const route: IRouter = typeof args[0] === "string" ? (typeof args[1] === "function" ? args[1] : router()) : typeof args[0] === "function" ? args[0] : router();
 
+			if (!isRouter(route)) {
+				throw new Error("Invalid router instance");
+			}
+
+			(route as any).__router_path__ = path;
+			route.parent = this as unknown as IRouter;
+
 			const doc: MiddlewareFCDoc | undefined = typeof args[args.length - 1] === "object" && typeof args[args.length - 1] !== "function" ? (args[args.length - 1] as any) : undefined;
 
-			innerRouter.use(path, route);
+			innerRouter.use(path, route as any);
 			defineRouteDoc(undefined, path, doc, route);
 			return route;
 		},
@@ -78,19 +94,28 @@ export const router = (): IRouter => {
 				| [handlers: IRouter | RequestHandler, doc?: MiddlewareFCDoc] = Array.from(arguments) as any;
 
 			const path: PathParams | undefined = typeof args[0] === "string" || args[0] instanceof RegExp || Array.isArray(args[0]) ? args[0] : undefined;
+
 			const handler: IRouter | RequestHandler | undefined = path ? (typeof args[1] === "function" ? args[1] : undefined) : typeof args[0] === "function" ? args[0] : undefined;
+
 			const doc: MiddlewareFCDoc | undefined = typeof args[args.length - 1] === "object" && typeof args[args.length - 1] !== "function" ? (args[args.length - 1] as any) : undefined;
 
 			const route = router();
+			(route as any).__router_path__ = path || "/";
+			route.parent = this as unknown as IRouter;
+
+			if (handler && isRouter(handler)) {
+				(route as any).__router_path__ = path || "/";
+				handler.parent = this as unknown as IRouter;
+			}
 
 			if (path) {
 				if (handler) {
-					innerRouter.use(path, handler);
+					innerRouter.use(path, handler as any);
 				} else {
-					innerRouter.use(path, route);
+					innerRouter.use(path, route as any);
 				}
 			} else if (handler) {
-				innerRouter.use(handler);
+				innerRouter.use(handler as any);
 			}
 
 			defineRouteDoc(undefined, "/", doc);
@@ -101,6 +126,47 @@ export const router = (): IRouter => {
 		defineSwagger(options: SwaggerOptions) {
 			innerSwaggerOptions = options;
 			innerSwaggerOptions.stackFrames = [parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0]];
+
+			const getSwaggerMarkdown = () => {
+				return swaggerMarkdown.convert(this.getSwagger());
+			};
+
+			const getSwaggerOptions = () => {
+				const { options } = this.getSwagger();
+				return options;
+			};
+
+			const getSwaggerDefinition = () => {
+				return swaggerJSDoc(this.getSwagger());
+			};
+
+			innerRouter.use("/doc/.md", (res, req) => {
+				req.setHeader("Content-Type", "text/markdown");
+				req.send(getSwaggerMarkdown());
+			});
+
+			innerRouter.use("/doc/markdown", (...args: any) => {
+				swaggerMarkdown.setup(getSwaggerOptions()).apply(this.app, args);
+			});
+
+			innerRouter.get("/doc/swagger/definition.json", (req, res) => {
+				res.json(getSwaggerDefinition());
+			});
+
+			innerRouter.use("/doc/swagger", swaggerUi.serve, (...args: any) => {
+				swaggerUi.setup(getSwaggerDefinition()).apply(this.app, args);
+			});
+
+			innerRouter.use("/doc/redoc", (...args: any) => {
+				redocUi.setup(getSwaggerOptions()).apply(this.app, args);
+			});
+
+			return {
+				markdownPath: joinPaths(this.path, "/doc/.md"),
+				definitionPath: joinPaths(this.path, "/doc/swagger/definition.json"),
+				swaggerUiPath: joinPaths(this.path, "/doc/swagger"),
+				redocUiPath: joinPaths(this.path, "/doc/redoc"),
+			};
 		},
 
 		getSwagger() {
