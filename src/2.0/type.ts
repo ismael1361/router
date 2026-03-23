@@ -51,14 +51,111 @@ export interface RequestHandler<Req extends Request = Request, Res extends Respo
 export type { NextFunction };
 
 export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
+	/**
+	 * Adiciona um middleware ou handler à cadeia de execução, mesclando os tipos
+	 * genéricos de request e response com os já acumulados.
+	 *
+	 * @typeParam Req - Tipo de request do handler sendo adicionado.
+	 * @typeParam Res - Tipo de response do handler sendo adicionado.
+	 * @param fn - Função handler ou instância de {@link IHandler} a ser encadeada.
+	 * @returns Nova instância de {@link IHandler} com os tipos mesclados.
+	 *
+	 * @example
+	 * app.get("/profile/:id")
+	 *   .handler((req, res, next) => {
+	 *     // middleware intermediário
+	 *     console.log(`Acessando perfil ${req.params.id}`);
+	 *     next();
+	 *   })
+	 *   .handler((req, res) => {
+	 *     res.json({ id: req.params.id });
+	 *   });
+	 */
 	handler<Req extends Request = Request, Res extends Response = Response>(
 		fn: RequestHandler<Req & Rq, Res & Rs> | IHandler<Req & Rq, Res & Rs>,
 	): IHandler<JoinRequest<Rq, Req>, JoinResponse<Rs, Res>>;
 
+	/**
+	 * Anexa documentação OpenAPI/Swagger ao handler atual sem alterar o fluxo de execução.
+	 * A documentação é mesclada na árvore interna e utilizada na geração do spec OpenAPI.
+	 *
+	 * @param operation - Objeto de operação OpenAPI (tags, summary, parameters, requestBody, etc.).
+	 * @param components - Componentes OpenAPI adicionais (schemas, securitySchemes, etc.).
+	 * @returns A mesma instância de {@link IHandler}, permitindo encadeamento contínuo.
+	 *
+	 * @example
+	 * app.get("/users/:userId")
+	 *   .handler(authMiddleware)
+	 *   .doc({
+	 *     tags: ["Users"],
+	 *     summary: "Buscar usuário por ID",
+	 *     parameters: [
+	 *       { name: "userId", in: "path", required: true, schema: { type: "string" } },
+	 *     ],
+	 *   })
+	 *   .handler((req, res) => {
+	 *     res.json({ userId: req.params.userId });
+	 *   });
+	 *
+	 * @example
+	 * // Documentação com componentes de segurança
+	 * app.delete("/users/:id")
+	 *   .handler(authMiddleware)
+	 *   .doc(
+	 *     {
+	 *       tags: ["Users"],
+	 *       summary: "Remover usuário",
+	 *       security: [{ bearerAuth: [] }],
+	 *     },
+	 *     {
+	 *       securitySchemes: {
+	 *         bearerAuth: { type: "http", scheme: "bearer" },
+	 *       },
+	 *     },
+	 *   )
+	 *   .handler((req, res) => {
+	 *     res.sendStatus(204);
+	 *   });
+	 */
 	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IHandler<Rq, Rs>;
 }
 
 export interface IMiddleware<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
+	/**
+	 * Anexa documentação OpenAPI/Swagger ao middleware sem alterar o fluxo de execução.
+	 * A documentação é mesclada na árvore interna quando o middleware é encadeado via
+	 * `.handler()` em um {@link IHandler}.
+	 *
+	 * @param operation - Objeto de operação OpenAPI (security, parameters, requestBody, etc.).
+	 * @param components - Componentes OpenAPI adicionais (schemas, securitySchemes, etc.).
+	 * @returns A mesma instância de {@link IMiddleware}, permitindo encadeamento de `.doc()`.
+	 *
+	 * @example
+	 * const authMiddleware = middleware((req: AuthRequest, res, next) => {
+	 *   next();
+	 * }).doc({
+	 *   security: [{ bearerAuth: [] }],
+	 *   components: {
+	 *     securitySchemes: {
+	 *       bearerAuth: { type: "http", scheme: "bearer" },
+	 *     },
+	 *   },
+	 * });
+	 *
+	 * @example
+	 * // Documentação com parâmetros de header
+	 * const apiKeyMiddleware = middleware((req, res, next) => {
+	 *   if (!req.headers["x-api-key"]) {
+	 *     res.status(401).json({ error: "API key required" });
+	 *     return;
+	 *   }
+	 *   next();
+	 * }).doc({
+	 *   parameters: [
+	 *     { name: "x-api-key", in: "header", required: true, schema: { type: "string" } },
+	 *   ],
+	 * });
+	 */
 	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IMiddleware<Rq, Rs>;
 }
 
@@ -66,23 +163,109 @@ export type Methods = "all" | "get" | "post" | "put" | "delete" | "patch" | "opt
 
 export type PathParams = string | RegExp | Array<string | RegExp>;
 
+/**
+ * Interface que define a assinatura de um método HTTP no router (ex.: `.get()`, `.post()`, `.delete()`).
+ * Ao ser chamado com um caminho de rota, retorna um {@link IHandler} tipado com os parâmetros
+ * extraídos automaticamente da string de rota.
+ *
+ * @typeParam Method - O método HTTP associado (ex.: `"get"`, `"post"`, `"all"`).
+ *
+ * @example
+ * // Parâmetros de rota são inferidos automaticamente
+ * app.get("/users/:userId/posts/:postId")
+ *   .handler((req, res) => {
+ *     // req.params.userId e req.params.postId são inferidos como string
+ *     res.json({ userId: req.params.userId, postId: req.params.postId });
+ *   });
+ *
+ * @example
+ * // Com documentação OpenAPI inline
+ * app.post("/items", { tags: ["Items"], summary: "Criar item" })
+ *   .handler((req, res) => {
+ *     res.status(201).json({ id: 1 });
+ *   });
+ */
 export interface IRouterMatcher<Method extends Methods = any> {
 	<Route extends string, P extends string = ExtractRouteParameters<Route>>(path: Route, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
 	<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
 	(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
 }
 
+/**
+ * Interface principal do router, que estende {@link RequestHandler} e expõe métodos HTTP,
+ * sub-rotas, middlewares e configuração de documentação OpenAPI/Swagger.
+ *
+ * Pode ser criado via `router()` e aninhado em outros routers ou em uma aplicação via `.route()` ou `.use()`.
+ *
+ * @example
+ * // Criar um router e definir rotas
+ * import { router } from "./2.0";
+ *
+ * const api = router();
+ *
+ * api.get("/users")
+ *   .handler((req, res) => {
+ *     res.json([{ name: "Alice" }]);
+ *   })
+ *   .doc({ tags: ["Users"], summary: "Listar usuários" });
+ *
+ * api.post("/users")
+ *   .handler((req, res) => {
+ *     res.status(201).json({ id: 1 });
+ *   })
+ *   .doc({ tags: ["Users"], summary: "Criar usuário" });
+ *
+ * @example
+ * // Aninhar routers com prefixo
+ * const v1 = router();
+ *
+ * v1.get("/test/route")
+ *   .handler((req, res) => {
+ *     res.send("Hello from v1!");
+ *   })
+ *   .doc({ tags: ["V1"], summary: "Rota de teste v1" });
+ *
+ * app.route("/v1", v1, {
+ *   security: [{ bearerAuth: [] }],
+ *   responses: {
+ *     "400": { description: "Dados inválidos" },
+ *     "404": { description: "Não encontrado" },
+ *   },
+ * });
+ *
+ * @example
+ * // Configurar documentação Swagger
+ * app.defineSwagger({
+ *   openapi: "3.0.0",
+ *   info: { title: "My API", version: "1.0.0" },
+ *   defaultResponses: {
+ *     400: { description: "Dados inválidos" },
+ *     401: { description: "Falha na autenticação" },
+ *     500: { description: "Erro interno do servidor" },
+ *   },
+ * });
+ */
 export interface IRouter extends RequestHandler {
+	/** Mapeia um callback para parâmetros de rota nomeados, equivalente a `app.param()` do Express. */
 	"param": core.Application["param"];
 
 	// Abaixo os métodos do objeto
+
+	/** Registra um handler para todos os métodos HTTP no caminho especificado. */
 	"all": IRouterMatcher<"all">;
+	/** Registra um handler para requisições GET. */
 	"get": IRouterMatcher<"get">;
+	/** Registra um handler para requisições POST. */
 	"post": IRouterMatcher<"post">;
+	/** Registra um handler para requisições PUT. */
 	"put": IRouterMatcher<"put">;
+	/** Registra um handler para requisições DELETE. */
 	"delete": IRouterMatcher<"delete">;
+	/** Registra um handler para requisições PATCH. */
 	"patch": IRouterMatcher<"patch">;
+	/** Registra um handler para requisições OPTIONS. */
 	"options": IRouterMatcher<"options">;
+	/** Registra um handler para requisições HEAD. */
 	"head": IRouterMatcher<"head">;
 
 	"checkout": IRouterMatcher;
@@ -102,23 +285,105 @@ export interface IRouter extends RequestHandler {
 	"unlock": IRouterMatcher;
 	"unsubscribe": IRouterMatcher;
 
+	/** Router pai ao qual este router está aninhado, ou `null` se for o router raiz. */
 	"parent": IRouter | null;
 
+	/** Caminho de prefixo deste router dentro do router pai. */
 	"path": string;
 
+	/**
+	 * Cria ou anexa um sub-router em um prefixo de rota, permitindo modularizar a aplicação.
+	 *
+	 * @param prefix - Prefixo de caminho para o sub-router.
+	 * @param router - Instância de {@link IRouter} a ser aninhada (opcional).
+	 * @param doc - Documentação OpenAPI aplicada a todas as rotas do sub-router.
+	 * @returns O sub-router criado ou anexado.
+	 *
+	 * @example
+	 * // Criar sub-router inline
+	 * const usersRoute = app.route("/users");
+	 * usersRoute.get("/").handler((req, res) => res.json([]));
+	 *
+	 * @example
+	 * // Anexar router existente com documentação
+	 * const v1 = router();
+	 * v1.get("/items").handler((req, res) => res.json([]));
+	 *
+	 * app.route("/v1", v1, {
+	 *   security: [{ bearerAuth: [] }],
+	 * });
+	 */
 	route<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
 	route<T extends string>(prefix: T, router: IRouter, doc?: MiddlewareFCDoc): IRouter;
 	route(router: IRouter, doc?: MiddlewareFCDoc): IRouter;
 	// route(path: PathParams, doc?: MiddlewareFCDoc): IRouter;
 
+	/**
+	 * Registra um middleware, handler ou sub-router no caminho especificado.
+	 * Quando chamado apenas com prefixo e sem handler, retorna um {@link IHandler} encadeável.
+	 *
+	 * @param prefix - Prefixo de caminho (opcional).
+	 * @param handler - Instância de {@link IRouter}, {@link RequestHandler} ou middleware.
+	 * @param doc - Documentação OpenAPI para o middleware.
+	 *
+	 * @example
+	 * // Middleware global sem prefixo
+	 * app.use((req, res, next) => {
+	 *   console.log(`${req.method} ${req.url}`);
+	 *   next();
+	 * });
+	 *
+	 * @example
+	 * // Sub-router com prefixo
+	 * const apiRouter = router();
+	 * app.use("/api", apiRouter);
+	 *
+	 * @example
+	 * // Handler encadeável com prefixo
+	 * app.use("/health")
+	 *   .handler((req, res) => {
+	 *     res.json({ status: "ok" });
+	 *   });
+	 */
 	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
 	// use(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
 	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
 	// use(path: PathParams, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
 	use(handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
 
+	/**
+	 * Define as opções de documentação Swagger/OpenAPI para este router.
+	 * Habilita a geração automática de spec OpenAPI e endpoints de documentação
+	 * (Swagger UI, Markdown, etc.).
+	 *
+	 * @param options - Configuração OpenAPI 3.0 com opções adicionais como
+	 *                  `defaultResponses`, `path` e `targets` para snippets.
+	 *
+	 * @example
+	 * app.defineSwagger({
+	 *   openapi: "3.0.0",
+	 *   info: { title: "My API", version: "1.0.0" },
+	 *   path: "/doc",
+	 *   defaultResponses: {
+	 *     400: { description: "Dados inválidos" },
+	 *     401: { description: "Falha na autenticação" },
+	 *     500: { description: "Erro interno do servidor" },
+	 *   },
+	 *   targets: ["shell_curl", "javascript_xhr", "node_native"],
+	 * });
+	 */
 	defineSwagger(options: SwaggerOptions): void;
 
+	/**
+	 * Retorna a especificação Swagger/OpenAPI gerada a partir de todas as rotas,
+	 * handlers e documentações registradas neste router.
+	 *
+	 * @returns Objeto de opções compatível com `swagger-jsdoc`.
+	 *
+	 * @example
+	 * const spec = app.getSwagger();
+	 * console.log(JSON.stringify(spec, null, 2));
+	 */
 	getSwagger(): swaggerJSDoc.Options;
 }
 
