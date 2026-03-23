@@ -31,7 +31,25 @@ export type ParamsDictionary<P extends string = string> = {
 export interface Request<P extends string = string, ReqBody = {}, ReqQuery = core.Query, ResBody = any> extends core.Request<ParamsDictionary<P>, ResBody, ReqBody, ReqQuery, Record<string, any>> {
 	__executedMiddlewares__?: Set<any>;
 	clientIp?: string;
-	executeOnce(isOnce?: boolean): void;
+
+	/**
+	 * Controla a execução do middleware para a requisição atual.
+	 * Útil para garantir que um middleware seja executado apenas uma vez, mesmo que seja
+	 * aplicado em múltiplos níveis de rotas.
+	 *
+	 * @param {boolean} [isOnce=true] - Se `true`, o middleware não será executado novamente para a mesma requisição. Se `false`, permite que o middleware seja executado novamente.
+	 *
+	 * @example
+	 * // Middleware que executa uma lógica apenas uma vez por requisição.
+	 * const myMiddleware: MiddlewareFC = (req, res, next) => {
+	 *   // Garante que este bloco de código execute apenas uma vez.
+	 *   req.executeOnce?.();
+	 *
+	 *   console.log("Este middleware só roda uma vez!");
+	 *   next();
+	 * };
+	 */
+	executeOnce?: (isOnce?: boolean) => void;
 }
 
 export type JoinRequest<A extends Request, B extends Request> = A extends Request<infer AP, infer AReqBody, infer AReqQuery, infer AResBody> & infer AReq
@@ -186,8 +204,53 @@ export type PathParams = string | RegExp | Array<string | RegExp>;
  *   });
  */
 export interface IRouterMatcher<Method extends Methods = any> {
-	<Route extends string, P extends string = ExtractRouteParameters<Route>>(path: Route, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
+	/**
+	 * Registra um handler para o método HTTP associado neste caminho de rota, retornando um {@link IHandler} com os tipos de parâmetros extraídos.
+	 *
+	 * @param path - Caminho de rota, que pode conter parâmetros nomeados (ex.: `"/users/:id"`).
+	 * @param doc - Documentação OpenAPI/Swagger para a rota.
+	 * @returns Instância de {@link IHandler} com os tipos de request e response adequados.
+	 *
+	 * @example
+	 * app.get("/users/:userId")
+	 *  .handler((req, res) => {
+	 *    // req.params.userId é inferido como string
+	 *    res.json({ userId: req.params.userId });
+	 *  });
+	 *
+	 * @example
+	 * // Com documentação OpenAPI inline
+	 * app.post("/items", { tags: ["Items"], summary: "Criar item" })
+	 *   .handler((req, res) => {
+	 *     res.status(201).json({ id: 1 });
+	 *   });
+	 */
 	<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
+
+	/**
+	 * Registra um handler para o método HTTP associado neste caminho de rota, retornando um {@link IHandler} com os tipos de parâmetros extraídos.
+	 *
+	 * @param path - Caminho de rota, que pode conter parâmetros nomeados (ex.: `"/users/:id"`).
+	 * @param doc - Documentação OpenAPI/Swagger para a rota.
+	 * @returns Instância de {@link IHandler} com os tipos de request e response adequados.
+	 *
+	 * @example
+	 * app.get("/users/:userId", { tags: ["Users"], summary: "Buscar usuário por ID" })
+	 *  .handler((req, res) => {
+	 *    res.json({ userId: req.params.userId });
+	 *  });
+	 *
+	 * @example
+	 * // Documentação com componentes de segurança
+	 * app.delete("/users/:id", { security: [{ bearerAuth: [] }] }, {
+	 *   securitySchemes: {
+	 *     bearerAuth: { type: "http", scheme: "bearer" },
+	 *   },
+	 * })
+	 * .handler((req, res) => {
+	 *   res.sendStatus(204);
+	 * });
+	 */
 	(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
 }
 
@@ -482,16 +545,169 @@ export interface IStacksOptions {
 	beforeStack?(...stacks: IStackLog[]): Array<IStackLog | string | Error>;
 }
 
+/**
+ * Interface principal da aplicação, estende {@link IRouter} com capacidades de servidor HTTP,
+ * configuração do Express e sistema de logging por pilha de stacks.
+ *
+ * Criada pela função `create()` exportada em `create.ts`, que encapsula uma instância Express
+ * com roteamento tipado, documentação OpenAPI e rastreamento de requisições.
+ *
+ * @example
+ * // Criar aplicação e iniciar servidor
+ * import { create } from "./2.0";
+ *
+ * const app = create();
+ *
+ * app.get("/hello/:name")
+ *   .handler((req, res) => {
+ *     res.send(`Hello, ${req.params.name}!`);
+ *   });
+ *
+ * app.listen(3000, () => {
+ *   console.log("Server is running on http://localhost:3000");
+ * });
+ *
+ * @example
+ * // Aplicação completa com sub-routers, Swagger e stacks
+ * const app = create();
+ *
+ * const v1 = router();
+ * v1.get("/users")
+ *   .handler((req, res) => res.json([]))
+ *   .doc({ tags: ["Users"], summary: "Listar usuários" });
+ *
+ * app.route("/v1", v1);
+ *
+ * app.defineSwagger({
+ *   openapi: "3.0.0",
+ *   info: { title: "My API", version: "1.0.0" },
+ * });
+ *
+ * app.defineStacks({
+ *   path: "/stacks",
+ *   limit: 200,
+ *   filePath: "./logs/stacks.log",
+ * });
+ *
+ * app.listen(8080);
+ */
 export interface IApplication extends IRouter {
+	/**
+	 * Inicia o servidor HTTP escutando na porta especificada, equivalente a `app.listen()` do Express.
+	 *
+	 * @example
+	 * app.listen(3000, () => {
+	 *   console.log("Server is running on http://localhost:3000");
+	 * });
+	 *
+	 * @example
+	 * // Com host específico
+	 * app.listen(8080, "0.0.0.0", () => {
+	 *   console.log("Server is running on http://0.0.0.0:8080");
+	 * });
+	 */
 	listen: core.Application["listen"];
+
+	/**
+	 * Desabilita a configuração `setting`. Equivalente a `app.set(setting, false)`.
+	 *
+	 * @example
+	 * app.disable("x-powered-by");
+	 */
 	disable: core.Application["disable"];
+
+	/**
+	 * Habilita a configuração `setting`. Equivalente a `app.set(setting, true)`.
+	 *
+	 * @example
+	 * app.enable("trust proxy");
+	 */
 	enable: core.Application["enable"];
+
+	/**
+	 * Retorna `true` se a configuração `setting` está desabilitada.
+	 *
+	 * @example
+	 * if (app.disabled("x-powered-by")) {
+	 *   console.log("x-powered-by está desabilitado");
+	 * }
+	 */
 	disabled: core.Application["disabled"];
+
+	/**
+	 * Retorna `true` se a configuração `setting` está habilitada.
+	 *
+	 * @example
+	 * if (app.enabled("trust proxy")) {
+	 *   console.log("trust proxy está habilitado");
+	 * }
+	 */
 	enabled: core.Application["enabled"];
+
+	/**
+	 * Registra uma engine de template para a extensão de arquivo especificada.
+	 *
+	 * @example
+	 * app.engine("html", require("ejs").renderFile);
+	 */
 	engine: core.Application["engine"];
+
+	/**
+	 * Mapeia um callback para parâmetros de rota nomeados.
+	 *
+	 * @example
+	 * app.param("userId", (req, res, next, id) => {
+	 *   console.log(`Parâmetro userId: ${id}`);
+	 *   next();
+	 * });
+	 */
 	param: core.Application["param"];
+
+	/**
+	 * Renderiza uma view e envia a string HTML resultante ao cliente.
+	 *
+	 * @example
+	 * app.render("index", { title: "Home" }, (err, html) => {
+	 *   if (err) console.error(err);
+	 *   console.log(html);
+	 * });
+	 */
 	render: core.Application["render"];
+
+	/**
+	 * Retorna todos os logs de stack registrados, lidos a partir do arquivo de log configurado.
+	 *
+	 * @returns Array de {@link IStackLog} com os registros de requisições.
+	 *
+	 * @example
+	 * const stacks = app.getStacks();
+	 * console.log(`Total de logs: ${stacks.length}`);
+	 * stacks.forEach((log) => {
+	 *   console.log(`[${log.level}] ${log.name} - ${log.message} (${log.duration}ms)`);
+	 * });
+	 */
 	getStacks(): IStackLog[];
+
+	/**
+	 * Configura o sistema de logging por pilha de stacks, que registra informações
+	 * sobre cada requisição (tempo, status, duração, etc.) em um arquivo de log.
+	 *
+	 * @param options - Opções de configuração do sistema de stacks.
+	 * @returns Objeto com o caminho da rota de visualização dos stacks.
+	 *
+	 * @example
+	 * const { stacksPath } = app.defineStacks({
+	 *   path: "/stacks",
+	 *   limit: 100,
+	 *   filePath: "./logs/stacks.log",
+	 *   beforeStack(...stacks) {
+	 *     // Filtrar logs antes de salvar
+	 *     return stacks.filter((s) => typeof s !== "string" && s.level === "ERROR");
+	 *   },
+	 * });
+	 *
+	 * console.log(`Stacks disponíveis em: ${stacksPath}`);
+	 */
 	defineStacks(options?: IStacksOptions): {
 		stacksPath: string;
 	};

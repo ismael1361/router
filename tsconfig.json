@@ -5,6 +5,10 @@
     },
     "compilerOptions": {
         "target": "es6",
+        "types": [
+            "jest",
+            "node"
+        ],
         "lib": [
             "es6",
             "esnext"
@@ -21,12 +25,12 @@
         "isolatedModules": true,
         "noEmit": false,
         "declaration": true,
+        "rootDir": "./src",
         "outDir": "./dist",
         "declarationDir": "./dist",
         "declarationMap": true,
         "sourceMap": true,
-        "importHelpers": true,
-        "downlevelIteration": true
+        "importHelpers": true
     },
     "include": [
         "src/**/*"

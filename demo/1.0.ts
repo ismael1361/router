@@ -1,4 +1,4 @@
-import { middleware, handler, create, route, Middlewares, Request, doc } from "../src";
+import { middleware, handler, create, route, Middlewares, Request, doc } from "../src/1.0";
 
 const app = create();
 const port = 8080;

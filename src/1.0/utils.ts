@@ -1,10 +1,8 @@
 import swaggerJSDoc from "swagger-jsdoc";
 import type { ExpressRequest, MiddlewareFC, NextFunction, Response, Request, HandlerFC, MiddlewareFCDoc } from "./type";
 import { HandleError } from "./HandleError";
-import fs from "fs";
 import { deepEqual } from "@ismael1361/utils";
 import { Layer } from "./Layer";
-import path from "path";
 
 export const isConstructedObject = (value: any): boolean => {
 	return typeof value === "object" && value !== null && value.constructor !== Object;
@@ -277,7 +275,7 @@ export function tryHandler(handler: MiddlewareFC<any, any>) {
 						// fs.appendFileSync(path.join(process.cwd(), "stacks.log"), `time=${new Date().toISOString()} level=${level} message=${JSON.stringify(stack)}\n`);
 					}
 				}
-		  }
+			}
 		: (handler as any);
 }
 
@@ -359,7 +357,7 @@ export const getCorsOptions = (allowedOrigins: string) => {
 export const getCorsHeaders = (allowedOrigins: string, currentOrigin: string | undefined) => {
 	const corsOptions = getCorsOptions(allowedOrigins);
 	const origins =
-		typeof corsOptions.origin === "boolean" ? (corsOptions.origin ? currentOrigin ?? "*" : "") : corsOptions.origin instanceof Array ? corsOptions.origin.join(",") : corsOptions.origin;
+		typeof corsOptions.origin === "boolean" ? (corsOptions.origin ? (currentOrigin ?? "*") : "") : corsOptions.origin instanceof Array ? corsOptions.origin.join(",") : corsOptions.origin;
 	return {
 		"Access-Control-Allow-Origin": origins,
 		"Access-Control-Allow-Methods": corsOptions.methods,

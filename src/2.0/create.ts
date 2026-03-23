@@ -6,6 +6,78 @@ import path from "path";
 import { HandleError } from "./HandleError";
 import { StacksController } from "./Middlewares";
 
+/**
+ * Cria uma instância de {@link IApplication}, que encapsula uma aplicação Express
+ * com roteamento tipado, documentação OpenAPI/Swagger e sistema de logging por stacks.
+ *
+ * A aplicação retornada herda todos os métodos de {@link IRouter} (`.get()`, `.post()`,
+ * `.route()`, `.use()`, `.defineSwagger()`, etc.) além de métodos próprios do Express
+ * (`listen`, `enable`, `disable`, etc.) e funcionalidades de rastreamento de requisições.
+ *
+ * @returns Instância de {@link IApplication} pronta para definir rotas e iniciar o servidor.
+ *
+ * @example
+ * // Aplicação básica com rota GET
+ * import { create } from '@ismael1361/router';
+ *
+ * const app = create();
+ *
+ * app.get("/hello/:name")
+ *   .handler((req, res) => {
+ *     res.send(`Hello, ${req.params.name}!`);
+ *   });
+ *
+ * app.listen(3000, () => {
+ *   console.log("Server is running on http://localhost:3000");
+ * });
+ *
+ * @example
+ * // Aplicação completa com middlewares, sub-routers, Swagger e stacks
+ * import { create, router, middleware, Middlewares, Request } from '@ismael1361/router';
+ *
+ * const app = create();
+ *
+ * // Middlewares globais
+ * app.use(Middlewares.json());
+ * app.use(Middlewares.cors({ allowOrigin: "*" }));
+ *
+ * // Middleware de autenticação tipado
+ * interface AuthRequest extends Request {
+ *   user: { id: string; roles: string[] };
+ * }
+ *
+ * const authMiddleware = middleware((req: AuthRequest, res, next) => {
+ *   req.user = { id: "123", roles: ["admin"] };
+ *   next();
+ * }).doc({
+ *   security: [{ bearerAuth: [] }],
+ *   components: {
+ *     securitySchemes: {
+ *       bearerAuth: { type: "http", scheme: "bearer" },
+ *     },
+ *   },
+ * });
+ *
+ * // Sub-router versionado
+ * const v1 = router();
+ * v1.get("/users")
+ *   .handler(authMiddleware)
+ *   .handler((req, res) => res.json([{ id: req.user.id }]))
+ *   .doc({ tags: ["Users"], summary: "Listar usuários" });
+ *
+ * app.route("/v1", v1);
+ *
+ * // Documentação Swagger
+ * app.defineSwagger({
+ *   openapi: "3.0.0",
+ *   info: { title: "My API", version: "1.0.0" },
+ * });
+ *
+ * // Sistema de stacks (logging)
+ * app.defineStacks({ path: "/stacks", limit: 100 });
+ *
+ * app.listen(8080);
+ */
 export const create = () => {
 	const app = express();
 

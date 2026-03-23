@@ -13,6 +13,76 @@ import swaggerMarkdown from "./swagger-markdown";
 import * as redocUi from "./redocUi";
 import { uuidv4 } from "@ismael1361/utils";
 
+/**
+ * Cria uma instância de {@link IRouter} com suporte a métodos HTTP tipados,
+ * sub-rotas aninhadas e geração automática de documentação OpenAPI/Swagger.
+ *
+ * O router pode ser usado de forma independente e depois montado em uma aplicação
+ * ou em outro router via `.route()` ou `.use()`, permitindo modularizar a API.
+ *
+ * @returns Instância de {@link IRouter} com todos os métodos HTTP e configuração Swagger.
+ *
+ * @example
+ * // Router básico com rotas
+ * import { router } from '@ismael1361/router';
+ *
+ * const api = router();
+ *
+ * api.get("/items")
+ *   .handler((req, res) => {
+ *     res.json([{ id: 1, name: "Item A" }]);
+ *   })
+ *   .doc({ tags: ["Items"], summary: "Listar itens" });
+ *
+ * api.post("/items")
+ *   .handler((req, res) => {
+ *     res.status(201).json({ id: 2, name: "Novo item" });
+ *   })
+ *   .doc({ tags: ["Items"], summary: "Criar item" });
+ *
+ * @example
+ * // Montar router em uma aplicação com prefixo
+ * import { create, router } from '@ismael1361/router';
+ *
+ * const app = create();
+ * const v1 = router();
+ *
+ * v1.get("/test/route")
+ *   .handler((req, res) => {
+ *     res.send("Hello from v1!");
+ *   })
+ *   .doc({ tags: ["V1"], summary: "Rota de teste v1" });
+ *
+ * app.route("/v1", v1, {
+ *   security: [{ bearerAuth: [] }],
+ *   responses: {
+ *     "400": { description: "Dados inválidos" },
+ *     "404": { description: "Não encontrado" },
+ *   },
+ * });
+ *
+ * @example
+ * // Router com Swagger habilitado
+ * const api = router();
+ *
+ * api.get("/users/:id")
+ *   .handler((req, res) => {
+ *     res.json({ id: req.params.id, name: "Alice" });
+ *   })
+ *   .doc({
+ *     tags: ["Users"],
+ *     summary: "Buscar usuário por ID",
+ *     parameters: [
+ *       { name: "id", in: "path", required: true, schema: { type: "string" } },
+ *     ],
+ *   });
+ *
+ * api.defineSwagger({
+ *   openapi: "3.0.0",
+ *   info: { title: "Users API", version: "1.0.0" },
+ *   path: "/doc",
+ * });
+ */
 export const router = (): IRouter => {
 	const innerRouter = express.Router();
 
