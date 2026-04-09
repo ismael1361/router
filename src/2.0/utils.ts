@@ -260,3 +260,15 @@ export const getCorsHeaders = (allowedOrigins: string, currentOrigin: string | u
 		"Access-Control-Expose-Headers": "Content-Length, Content-Range",
 	};
 };
+
+export function once(fn: Function) {
+	const f: { (): any; called: boolean; value?: any } = function (this: any) {
+		if (f.called) return f.value;
+		f.called = true;
+		return (f.value = fn.apply(this, arguments));
+	};
+
+	f.called = false;
+
+	return f;
+}

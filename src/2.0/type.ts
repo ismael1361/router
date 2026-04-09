@@ -2,6 +2,7 @@ import type * as core from "express-serve-static-core";
 import type { NextFunction } from "express";
 import type swaggerJSDoc from "swagger-jsdoc";
 import type { Readable } from "stream";
+import type http from "http";
 
 // Utilitário para checar se o tipo é "sujo" (any, never ou unknown)
 type IsBad<T> = 0 extends 1 & T
@@ -63,10 +64,23 @@ export interface Response<ResBody = any> extends core.Response<ResBody, Record<s
 export type JoinResponse<A extends Response, B extends Response> = A extends Response<infer AResBody> ? (B extends Response<infer BResBody> ? Response<AResBody & BResBody> : never) : never;
 
 export interface RequestHandler<Req extends Request = Request, Res extends Response = Response> {
+	// (req: Req, res: Res, next: NextFunction): unknown;
 	(req: Req, res: Res, next: NextFunction): unknown;
 }
 
 export type { NextFunction };
+
+export type TDocComponents = swaggerJSDoc.Components;
+
+export type TDocOperation =
+	| (swaggerJSDoc.Operation & {
+			components?: TDocComponents;
+	  })
+	| swaggerJSDoc.Operation;
+
+export interface IDoc<R = TDocOperation> {
+	(operation: TDocOperation, components?: TDocComponents): R;
+}
 
 export interface IHandler<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
 	/**
@@ -135,7 +149,7 @@ export interface IHandler<Rq extends Request = Request, Rs extends Response = Re
 	 *     res.sendStatus(204);
 	 *   });
 	 */
-	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IHandler<Rq, Rs>;
+	doc: IDoc<IHandler<Rq, Rs>>;
 }
 
 export interface IMiddleware<Rq extends Request = Request, Rs extends Response = Response> extends RequestHandler<Rq, Rs> {
@@ -174,7 +188,7 @@ export interface IMiddleware<Rq extends Request = Request, Rs extends Response =
 	 *   ],
 	 * });
 	 */
-	doc(operation: MiddlewareFCDoc | swaggerJSDoc.Operation, components?: swaggerJSDoc.Components): IMiddleware<Rq, Rs>;
+	doc: IDoc<IMiddleware<Rq, Rs>>;
 }
 
 export type Methods = "all" | "get" | "post" | "put" | "delete" | "patch" | "options" | "head";
@@ -225,7 +239,7 @@ export interface IRouterMatcher<Method extends Methods = any> {
 	 *     res.status(201).json({ id: 1 });
 	 *   });
 	 */
-	<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
+	<Path extends string, P extends string = ExtractRouteParameters<Path>>(path: Path, doc?: TDocOperation): IHandler<Request<P>>;
 
 	/**
 	 * Registra um handler para o método HTTP associado neste caminho de rota, retornando um {@link IHandler} com os tipos de parâmetros extraídos.
@@ -251,7 +265,7 @@ export interface IRouterMatcher<Method extends Methods = any> {
 	 *   res.sendStatus(204);
 	 * });
 	 */
-	(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
+	(path: PathParams, doc?: TDocOperation): IHandler;
 }
 
 /**
@@ -376,10 +390,10 @@ export interface IRouter extends RequestHandler {
 	 *   security: [{ bearerAuth: [] }],
 	 * });
 	 */
-	route<T extends string>(prefix: T, doc?: MiddlewareFCDoc): IRouter;
-	route<T extends string>(prefix: T, router: IRouter, doc?: MiddlewareFCDoc): IRouter;
-	route(router: IRouter, doc?: MiddlewareFCDoc): IRouter;
-	// route(path: PathParams, doc?: MiddlewareFCDoc): IRouter;
+	route<T extends string>(prefix: T, doc?: TDocOperation): IRouter;
+	route<T extends string>(prefix: T, router: IRouter, doc?: TDocOperation): IRouter;
+	route(router: IRouter, doc?: TDocOperation): IRouter;
+	// route(path: PathParams, doc?: TDocOperation): IRouter;
 
 	/**
 	 * Registra um middleware, handler ou sub-router no caminho especificado.
@@ -408,11 +422,13 @@ export interface IRouter extends RequestHandler {
 	 *     res.json({ status: "ok" });
 	 *   });
 	 */
-	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, doc?: MiddlewareFCDoc): IHandler<Request<P>>;
-	// use(path: PathParams, doc?: MiddlewareFCDoc): IHandler;
-	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
-	// use(path: PathParams, handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
-	use(handler: IRouter | RequestHandler, doc?: MiddlewareFCDoc): void;
+	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, doc?: TDocOperation): IHandler<Request<P>>;
+	// use(path: PathParams, doc?: TDocOperation): IHandler;
+	use<T extends string, P extends string = ExtractRouteParameters<T>>(prefix: T, handler: IRouter | RequestHandler, doc?: TDocOperation): void;
+	// use(path: PathParams, handler: IRouter | RequestHandler, doc?: TDocOperation): void;
+	use(handler: IRouter | RequestHandler, doc?: TDocOperation): void;
+
+	middleware<Req extends Request = Request, Res extends Response = Response>(handler: RequestHandler<Req, Res>, doc?: TDocOperation): IMiddleware<Req, Res>;
 
 	/**
 	 * Define as opções de documentação Swagger/OpenAPI para este router.
@@ -436,6 +452,8 @@ export interface IRouter extends RequestHandler {
 	 * });
 	 */
 	defineSwagger(options: SwaggerOptions): void;
+
+	analyzeSwaggerDoc(): void;
 
 	/**
 	 * Retorna a especificação Swagger/OpenAPI gerada a partir de todas as rotas,
@@ -711,6 +729,11 @@ export interface IApplication extends IRouter {
 	defineStacks(options?: IStacksOptions): {
 		stacksPath: string;
 	};
+
+	servers: Set<http.Server>;
+	server: http.Server | undefined;
+
+	beforeListen(event: (server: http.Server) => void | Promise<void>): void;
 }
 
 export interface FileInfo {

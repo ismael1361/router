@@ -1,13 +1,14 @@
-import { create, middleware, router, Request } from "../src/2.0";
+import { create, middleware, router, handler, doc, Request, Middlewares } from "../src/2.0";
 
 const app = create();
-const port = 8080;
+const port = 3030;
 
 interface AuthRequest extends Request<"userId" | "id"> {
 	user: { userId: string; id: string; roles: string[] };
 }
 
 const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
+	req.executeOnce?.();
 	console.log(req.params, req.body, req.query);
 	const { userId = "", id = "" } = req.params;
 	req.user = { userId, id, roles: ["admin"] };
@@ -25,16 +26,21 @@ const authMiddleware = middleware((req: AuthRequest, res: any, next: any) => {
 	},
 });
 
-app.get("/hello/:userId/:id")
-	.handler(authMiddleware)
+const getUserDoc = doc({ tags: ["Users"] });
+
+const getUserHandler = handler(authMiddleware)
 	.handler((req, res, next) => {
 		const { user } = req;
-		console.log("Console:", `Hello, ${user.id}! Your ID is ${user.userId}.`);
+		console.log("Console {handler}:", `Hello, ${user.id}! Your ID is ${user.userId}.`);
 		next();
 	})
-	.doc({
-		tags: ["Users"],
-	})
+	.doc(getUserDoc);
+
+const routeV1 = router();
+
+routeV1
+	.get("/hello/:userId/:id")
+	.handler(getUserHandler)
 	.handler((req, res) => {
 		const { userId } = req.params;
 		res.send(`Hello, ${userId}! Your ID is ${req.user.userId}.`);
@@ -44,8 +50,8 @@ app.get("/hello/:userId/:id")
 			{
 				name: "userId",
 				in: "path",
-				required: true,
-				schema: { type: "string" },
+				required: false,
+				schema: { type: "null" },
 			},
 			{
 				name: "id",
@@ -56,8 +62,6 @@ app.get("/hello/:userId/:id")
 		],
 		summary: "Get router",
 	});
-
-const routeV1 = router();
 
 routeV1
 	.get("/test/route")
@@ -79,9 +83,7 @@ app.route("/v1", routeV1, {
 			description: "Not found",
 		},
 	},
-});
-
-app.defineSwagger({
+}).defineSwagger({
 	openapi: "3.0.0",
 	info: { title: "My API", version: "1.0.0" },
 	defaultResponses: {
@@ -92,6 +94,12 @@ app.defineSwagger({
 		403: { description: "Acesso negado" },
 		500: { description: "Erro interno do servidor" },
 	},
+	servers: [
+		{
+			url: "http://localhost:3030/v1",
+			description: "Servidor Local",
+		},
+	],
 });
 
 // console.log(JSON.stringify(app.getSwagger(), null, 2));

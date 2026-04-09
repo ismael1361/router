@@ -5,6 +5,8 @@ import fs from "fs";
 import path from "path";
 import { HandleError } from "./HandleError";
 import { StacksController } from "./Middlewares";
+import http from "http";
+import { once } from "./utils";
 
 /**
  * Cria uma instância de {@link IApplication}, que encapsula uma aplicação Express
@@ -88,7 +90,21 @@ export const create = () => {
 		return app(req, res, next);
 	} as unknown as IApplication;
 
-	innerApplication.listen = app.listen.bind(app);
+	const servers: Set<http.Server> = new Set();
+	const beforeListenHandlers: Array<(server: http.Server) => void | Promise<void>> = [];
+
+	innerApplication.listen = function listen() {
+		const innerServer = http.createServer(app);
+		servers.add(innerServer);
+		const args = Array.prototype.slice.call(arguments);
+		if (typeof args[args.length - 1] === "function") {
+			const done = (args[args.length - 1] = once(args[args.length - 1]));
+			innerServer.once("error", done);
+		}
+		beforeListenHandlers.forEach((handler) => handler(innerServer));
+		return innerServer.listen.apply(innerServer, args as any);
+	};
+
 	innerApplication.disable = app.disable.bind(app);
 	innerApplication.enable = app.enable.bind(app);
 	innerApplication.disabled = app.disabled.bind(app);
@@ -333,6 +349,20 @@ export const create = () => {
 			stacksPath,
 		};
 	};
+
+	innerApplication.beforeListen = (event) => {
+		beforeListenHandlers.push(event);
+	};
+
+	Object.setPrototypeOf(innerApplication, {
+		get servers(): Set<http.Server> {
+			return servers;
+		},
+
+		get server(): http.Server | undefined {
+			return Array.from(servers)[0];
+		},
+	});
 
 	return Object.setPrototypeOf(innerApplication, Object.getPrototypeOf(innerRouter)) as unknown as IApplication;
 };

@@ -1,14 +1,33 @@
 import swaggerJSDoc from "swagger-jsdoc";
 import { IStackFrame } from "./type";
 
+const color = {
+	red: (s: string) => `\x1b[31m${s}\x1b[0m`,
+	yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
+	cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
+	gray: (s: string) => `\x1b[90m${s}\x1b[0m`,
+};
+
 export class OpenAPIError extends Error {
 	// public readonly stackFrames: IStackFrame[];
 
-	constructor(message: string, stackFrames: IStackFrame[] = []) {
+	constructor(
+		message: string,
+		readonly stackFrames: IStackFrame[] = [],
+	) {
 		super(message);
 		this.name = "OpenAPIError";
 		// this.stackFrames = stackFrames;
 		this.stack = `OpenAPIError: ${message}\n` + stackFrames.map((frame) => `    at ${frame.functionName} (${frame.filePath}:${frame.lineNumber}:${frame.columnNumber})`).join("\n");
+	}
+
+	print() {
+		const header = `${color.red("OpenAPIError:")} ${color.yellow(this.message)}`;
+		const frames = this.stackFrames
+			.map((f) => `    at ${color.cyan(f.functionName)} (${color.gray(f.filePath)}:${color.yellow(String(f.lineNumber))}:${color.yellow(String(f.columnNumber))})`)
+			.join("\n");
+
+		console.error(`${header}\n${frames}`);
 	}
 }
 
@@ -84,7 +103,7 @@ function validateSchema(schema: any, context: string, doc: Record<string, any>, 
 
 	if (schema.type && !VALID_SCHEMA_TYPES.has(schema.type)) {
 		errors.push({
-			message: `Tipo inválido '${schema.type}'. Esperado: ${[...VALID_SCHEMA_TYPES].join(", ")}`,
+			message: `Tipo inválido '${schema.type}'. Esperado: "${[...VALID_SCHEMA_TYPES].join(`", "`)}"`,
 			path: context,
 			stackFrames,
 		});

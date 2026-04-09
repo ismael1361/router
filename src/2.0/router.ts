@@ -1,7 +1,7 @@
 import express from "express";
 import { METHODS } from "http";
-import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams, SwaggerOptions, SnippetTargets } from "./type";
-import { handler } from "./handler";
+import type { ExtractRouteParameters, IRouter, Methods, RequestHandler, MiddlewareFCDoc, ITreeDoc, IRouterMatcher, PathParams, SwaggerOptions, SnippetTargets, TDocOperation } from "./type";
+import { handler, middleware } from "./handler";
 import { isRouter, joinObject, joinPaths, omit, parseStack, rootStack, targetLabels } from "./utils";
 import nodePath from "path";
 import { renderChainDocs } from "./renderChainDocs";
@@ -204,42 +204,75 @@ export const router = (): IRouter => {
 			return handler ? undefined : route;
 		},
 
+		middleware(handler: RequestHandler, doc?: TDocOperation) {
+			const m = middleware(handler);
+
+			if (doc) {
+				m.doc(doc);
+			}
+
+			this.use(m);
+
+			return m;
+		},
+
 		defineSwagger(options: SwaggerOptions) {
 			innerSwaggerOptions = options;
 			innerSwaggerOptions.stackFrames = [parseStack().filter(({ dir }) => !nodePath.resolve(dir).startsWith(nodePath.resolve(rootStack[0].dir)))[0]];
+
+			this.analyzeSwaggerDoc();
 
 			const getSwaggerMarkdown = () => {
 				return swaggerMarkdown.convert(this.getSwagger());
 			};
 
 			const getSwaggerOptions = () => {
-				const { options } = this.getSwagger();
-				return options;
+				return this.getSwagger();
 			};
 
 			const getSwaggerDefinition = () => {
 				return swaggerJSDoc(this.getSwagger());
 			};
 
-			innerRouter.use("/doc/.md", (res, req) => {
-				req.setHeader("Content-Type", "text/markdown");
-				req.send(getSwaggerMarkdown());
+			innerRouter.use("/doc/.md", (req, res) => {
+				try {
+					res.setHeader("Content-Type", "text/markdown");
+					res.send(getSwaggerMarkdown());
+				} catch (e) {
+					res.status(500).send(e instanceof OpenAPIError ? e.stack : String(e));
+				}
 			});
 
-			innerRouter.use("/doc/markdown", (...args: any) => {
-				swaggerMarkdown.setup(getSwaggerOptions()).apply(this.app, args);
+			innerRouter.use("/doc/markdown", (req, res, next) => {
+				try {
+					swaggerMarkdown.setup(getSwaggerOptions()).apply(this.app, [req, res, next]);
+				} catch (e) {
+					res.status(500).send(e instanceof OpenAPIError ? e.stack : String(e));
+				}
 			});
 
 			innerRouter.get("/doc/swagger/definition.json", (req, res) => {
-				res.json(getSwaggerDefinition());
+				try {
+					res.json(getSwaggerDefinition());
+				} catch (e) {
+					res.status(500).send(e instanceof OpenAPIError ? e.stack : String(e));
+				}
 			});
 
-			innerRouter.use("/doc/swagger", swaggerUi.serve, (...args: any) => {
-				swaggerUi.setup(getSwaggerDefinition()).apply(this.app, args);
+			innerRouter.use("/doc/swagger", swaggerUi.serve, (req: any, res: any, next: any) => {
+				try {
+					swaggerUi.setup(getSwaggerDefinition()).apply(this.app, [req, res, next]);
+				} catch (e) {
+					res.status(500).send(e instanceof OpenAPIError ? e.stack : String(e));
+				}
 			});
 
-			innerRouter.use("/doc/redoc", (...args: any) => {
-				redocUi.setup(getSwaggerOptions()).apply(this.app, args);
+			innerRouter.use("/doc/redoc", (req, res, next) => {
+				try {
+					redocUi.setup(getSwaggerOptions()).apply(this.app, [req, res, next]);
+				} catch (e) {
+					res.status(500).send(e instanceof OpenAPIError ? e.stack : String(e));
+				}
 			});
 
 			return {
@@ -250,7 +283,7 @@ export const router = (): IRouter => {
 			};
 		},
 
-		getSwagger() {
+		__getSwaggerDefinition__() {
 			if (!innerSwaggerOptions) {
 				throw new Error("Swagger options not defined. Please set the swagger options using the defineSwagger method.");
 			}
@@ -266,9 +299,59 @@ export const router = (): IRouter => {
 				...omit(doc, "path", "defaultResponses"),
 			};
 
+			const convertExpressPathToSwagger = (path: string): string => {
+				// A regex busca por padrões que começam com ':'
+				// Seguidos por caracteres alfanuméricos (o nome do parâmetro)
+				// E ignora o sufixo '?' caso seja um parâmetro opcional do Express
+				return path.replace(/:([a-zA-Z0-9_]+)\??/g, "{$1}");
+			};
+
+			if (definition.paths) {
+				const newPaths: Record<string, any> = {};
+				for (const path in definition.paths) {
+					const convertedPath = convertExpressPathToSwagger(path);
+					newPaths[convertedPath] = { ...definition.paths[path] };
+				}
+				definition.paths = newPaths;
+			}
+
+			return definition as swaggerJSDoc.OAS3Definition;
+		},
+
+		analyzeSwaggerDoc() {
+			try {
+				if (!innerSwaggerOptions) {
+					return;
+				}
+
+				const definition: swaggerJSDoc.OAS3Definition = this.__getSwaggerDefinition__();
+
+				const analysisErrors = analyzeSwaggerJSONDoc(definition);
+
+				if (analysisErrors.length <= 0) {
+					return;
+				}
+
+				for (const error of analysisErrors) {
+					console.log("");
+					error.print();
+				}
+
+				console.log("");
+			} catch {}
+		},
+
+		getSwagger() {
+			if (!innerSwaggerOptions) {
+				throw new Error("Swagger options not defined. Please set the swagger options using the defineSwagger method.");
+			}
+
+			const definition: swaggerJSDoc.OAS3Definition = this.__getSwaggerDefinition__();
+
 			// Valida o documento OAS antes de gerar os snippets
-			const analysisErrors = analyzeSwaggerJSONDoc(definition as swaggerJSDoc.OAS3Definition);
+			const analysisErrors = analyzeSwaggerJSONDoc(definition);
 			if (analysisErrors.length > 0) {
+				analysisErrors[0].print();
 				throw analysisErrors[0];
 			}
 
