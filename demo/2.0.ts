@@ -50,8 +50,8 @@ routeV1
 			{
 				name: "userId",
 				in: "path",
-				required: false,
-				schema: { type: "null" },
+				required: true,
+				schema: { type: "string" },
 			},
 			{
 				name: "id",
@@ -101,6 +101,10 @@ app.route("/v1", routeV1, {
 		},
 	],
 });
+
+// app.all("*", (req: any, res: any) => {
+// 	res.status(404).send({ error: "Not found" });
+// });
 
 // console.log(JSON.stringify(app.getSwagger(), null, 2));
 
