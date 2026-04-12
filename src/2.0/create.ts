@@ -115,7 +115,7 @@ export const create = () => {
 
 	let filePath = "./stacks.log";
 
-	innerApplication.getStacks = () => {
+	innerApplication.getStacks = (): IStackLog[] => {
 		if (!fs.existsSync(path.resolve(filePath))) {
 			return [];
 		}
@@ -206,7 +206,7 @@ export const create = () => {
 	innerApplication.defineStacks = (options = {}) => {
 		const { path: stacksPath = "/stacks", limit = 100, filePath: stacksFilePath = "./stacks.log", beforeStack } = options;
 
-		let filePath = stacksFilePath;
+		filePath = stacksFilePath;
 		let timer: NodeJS.Timeout;
 
 		__registerStacks__.register = (level = "INFO", ...reasons) => {
