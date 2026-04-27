@@ -110,7 +110,7 @@ interface CorsOptions {
 	 * - Use "*" para permitir todas as origens.
 	 * - Use uma URL específica (ex: "https://example.com") para restringir a uma origem.
 	 */
-	allowOrigin?: string;
+	allowOrigin?: string | string[];
 	/**
 	 * Informa quais métodos HTTP são permitidos quando a requisição é cross-origin.
 	 * - OPTIONS é essencial para preflight requests (verificação prévia feita pelo navegador).
@@ -173,18 +173,25 @@ interface CorsOptions {
  *   exposeHeaders: ["Content-Length"]
  * }));
  */
-export function cors(allowOrigin?: string, options?: CorsOptions): RequestHandler<Request, Response>;
+export function cors(allowOrigin?: string | string[], options?: CorsOptions): RequestHandler<Request, Response>;
 export function cors(options?: CorsOptions): RequestHandler<Request, Response>;
-export function cors(allowOrigin: string | CorsOptions = "*", options: CorsOptions = {}): RequestHandler<Request, Response> {
-	options = { ...(typeof allowOrigin === "string" ? { allowOrigin } : allowOrigin), ...options };
+export function cors(allowOrigin: string | string[] | CorsOptions = "*", options: CorsOptions = {}): RequestHandler<Request, Response> {
+	options = { ...(typeof allowOrigin === "string" || Array.isArray(allowOrigin) ? { allowOrigin } : allowOrigin), ...options };
 	return (req, res, next) => {
 		// Configuração mais robusta de CORS
-		const origin = req.headers.origin;
-
 		options = { allowedMethods: "*", allowedHeaders: "*", credentials: true, exposeHeaders: "*", ...options };
 
+		const origin =
+			typeof allowOrigin === "string"
+				? allowOrigin
+				: Array.isArray(options.allowOrigin) && options.allowOrigin.map((o) => o.toLowerCase()).includes(req.header("origin")?.toLowerCase() || "")
+					? req.headers.origin
+					: Array.isArray(options.allowOrigin)
+						? options.allowOrigin[0]
+						: options.allowOrigin;
+
 		// Definir headers CORS
-		res.setHeader("Access-Control-Allow-Origin", options.allowOrigin || origin || "*");
+		res.setHeader("Access-Control-Allow-Origin", origin?.toLowerCase() || "*");
 
 		if (options.allowedMethods) res.setHeader("Access-Control-Allow-Methods", Array.isArray(options.allowedMethods) ? options.allowedMethods.join(",") : options.allowedMethods);
 
